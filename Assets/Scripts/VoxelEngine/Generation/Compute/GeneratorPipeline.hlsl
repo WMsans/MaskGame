@@ -2,10 +2,11 @@
 #define GENERATOR_PIPELINE_H
 
 #include "../../Shared/Shaders/Includes/GenerationContext.hlsl"
-#include "./Generators/TerrainGenerator.hlsl"
+// #include "./Generators/TerrainGenerator.hlsl"
+#include "./Generators/MaskSDF.hlsl"
 #include "./Generators/Spheres.hlsl"
 #include "./Generators/SineFloor.hlsl"
-#include "./Generators/Trees.hlsl"
+// #include "./Generators/Trees.hlsl"
 
 // --- Global Dynamic SDF Resources ---
 // These are bound by VoxelVolume or DynamicSDFManager
@@ -79,11 +80,12 @@ GenerationContext RunGeneratorPipeline(float3 worldPos, uint activeObjects[32], 
     GenerationContext ctx;
     InitContext(ctx, worldPos);
     
-    // --- 1. Base Stage (Terrain) ---
-    Stage_Terrain(ctx);
+    // --- 1. Base Stage (Mask) ---
+    // Stage_Terrain(ctx);
+    Stage_Mask(ctx);
     
-    // --- 2. Trees Stage (Minecraft-like) ---
-    Stage_Trees(ctx);
+    // --- 2. Trees Stage (Disabled for Mask) ---
+    // Stage_Trees(ctx);
     
     // --- 3. Dynamic Objects Stage ---
     ApplyDynamicObjects(ctx, worldPos, activeObjects, activeCount);
