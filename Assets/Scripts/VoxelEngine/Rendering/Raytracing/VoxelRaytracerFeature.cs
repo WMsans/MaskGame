@@ -37,6 +37,11 @@ namespace VoxelEngine.Core.Rendering
             public bool enableTAA = true; 
             [Range(0.0f, 1.0f)] public float taaBlend = 0.93f; 
             
+            [Header("Retro Look")]
+            public bool indexedColor = false; 
+            [Range(2, 64)] 
+            public int colorSteps = 8; 
+            
             [Header("LOD Settings")]
             [Range(1.0f, 200.0f)] 
             public float lodBias = 1.0f;
@@ -138,6 +143,8 @@ namespace VoxelEngine.Core.Rendering
             private static readonly int _SharpnessParams = Shader.PropertyToID("_Sharpness");
             private static readonly int _HistoryTexParams = Shader.PropertyToID("_HistoryTex");
             private static readonly int _BlendParams = Shader.PropertyToID("_Blend");
+            
+            private static readonly int _ColorStepsParams = Shader.PropertyToID("_ColorSteps");
 
             private RTHandle _albedoHandle;
             private RTHandle _normalHandle;
@@ -209,7 +216,17 @@ namespace VoxelEngine.Core.Rendering
             private class PassData {
                 public ComputeShader computeShader; public int kernel; public TextureHandle targetColor; public TextureHandle targetDepth; public TextureHandle targetMotionVector; public TextureHandle sourceDepth; public TextureHandle sourceColor; public Matrix4x4 cameraToWorld; public Matrix4x4 cameraInverseProjection; public Matrix4x4 viewProj; public Matrix4x4 prevViewProj; public Vector4 zBufferParams; public int width; public int height; public Vector4 mainLightPosition; public Vector4 mainLightColor; public Vector4 raytraceParams; public GraphicsBuffer nodeBuffer; public GraphicsBuffer payloadBuffer; public GraphicsBuffer brickDataBuffer; public GraphicsBuffer pageTableBuffer; public GraphicsBuffer tlasGridBuffer; public GraphicsBuffer tlasChunkIndexBuffer; public Vector3 tlasBoundsMin; public Vector3 tlasBoundsMax; public int tlasResolution; public GraphicsBuffer chunkBuffer; public int chunkCount; public GraphicsBuffer materialBuffer; public GraphicsBuffer raycastBuffer; public TextureHandle albedoArray; public TextureHandle normalArray; public TextureHandle maskArray; public int frameCount; public TextureHandle blueNoise; public Vector2 mousePosition; public int maxIterations; public int maxMarchSteps;
             }
-            private class CompositePassData { public TextureHandle source; public TextureHandle depthSource; public Material material; public bool useFSR; public float sharpness; }
+            
+            private class CompositePassData { 
+                public TextureHandle source; 
+                public TextureHandle depthSource; 
+                public Material material; 
+                public bool useFSR; 
+                public float sharpness;
+                public bool useIndexedColor;
+                public int colorSteps;
+            }
+            
             private class FXAAPassData { public TextureHandle source; public Material material; }
             private class TAAPassData { public TextureHandle source; public TextureHandle history; public TextureHandle motion; public TextureHandle destination; public Material material; public float blend; }
             private class GrassPassData { public TextureHandle colorTarget; public TextureHandle depthTarget; }
@@ -220,7 +237,6 @@ namespace VoxelEngine.Core.Rendering
 
                 var cameraData = frameData.Get<UniversalCameraData>();
                 
-                // Culling update
                 Plane[] allPlanes = GeometryUtility.CalculateFrustumPlanes(cameraData.camera);
                 Plane[] cullingPlanes = _settings.useCameraFarPlane ? allPlanes : new Plane[] { allPlanes[0], allPlanes[1], allPlanes[2], allPlanes[3], allPlanes[4] };
                 VoxelVolumePool.Instance.UpdateVisibility(cullingPlanes);
@@ -231,7 +247,6 @@ namespace VoxelEngine.Core.Rendering
                 var lightData = frameData.Get<UniversalLightData>();
                 var cameraDesc = cameraData.cameraTargetDescriptor;
 
-                // Resolution Logic
                 float currentScale = 1.0f;
                 int iterations = 128;
                 int marchSteps = 64;
@@ -243,7 +258,6 @@ namespace VoxelEngine.Core.Rendering
                 int scaledWidth = Mathf.Max(1, Mathf.RoundToInt(cameraDesc.width * currentScale));
                 int scaledHeight = Mathf.Max(1, Mathf.RoundToInt(cameraDesc.height * currentScale));
 
-                // Create Textures
                 TextureDesc colorDesc = new TextureDesc(scaledWidth, scaledHeight) { colorFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.R16G16B16A16_SFloat, enableRandomWrite = true, name = "VoxelRaytraceResult_LowRes" };
                 TextureHandle lowResResult = renderGraph.CreateTexture(colorDesc);
 
@@ -253,7 +267,6 @@ namespace VoxelEngine.Core.Rendering
                 TextureDesc mvDesc = new TextureDesc(scaledWidth, scaledHeight) { colorFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.R16G16_SFloat, enableRandomWrite = true, name = "VoxelMotionVectors" };
                 TextureHandle motionVectorTex = renderGraph.CreateTexture(mvDesc);
 
-                // Jitter & Matrices Setup
                 int frameIndex = Time.frameCount % 16;
                 float jitterX = (Halton(frameIndex + 1, 2) - 0.5f);
                 float jitterY = (Halton(frameIndex + 1, 3) - 0.5f);
@@ -267,7 +280,6 @@ namespace VoxelEngine.Core.Rendering
                 if (!_prevMatrices.TryGetValue(cam, out Matrix4x4 prevViewProj)) prevViewProj = viewProj;
                 _prevMatrices[cam] = viewProj;
 
-                // TAA History Setup
                 TextureHandle historyRead = TextureHandle.nullHandle;
                 TextureHandle historyWrite = TextureHandle.nullHandle;
                 if (useTAA) {
@@ -283,7 +295,6 @@ namespace VoxelEngine.Core.Rendering
                     hist.currentIndex = (hist.currentIndex + 1) % 2;
                 }
 
-                // Final Output Setup
                 TextureHandle compositeOutput;
                 bool useFXAA = _settings.enableFXAA && _fxaaMaterial != null;
                 if (useFXAA) {
@@ -373,55 +384,46 @@ namespace VoxelEngine.Core.Rendering
                     compData.material = _compositeMaterial;
                     compData.useFSR = (_settings.upscalingMode == UpscalingMode.SpatialFSR);
                     compData.sharpness = _settings.sharpness;
+                    compData.useIndexedColor = _settings.indexedColor;
+                    compData.colorSteps = _settings.colorSteps;
 
                     builder.UseTexture(compData.source, AccessFlags.Read);
                     builder.UseTexture(compData.depthSource, AccessFlags.Read);
                     
-                    // [IMPORTANT] FORCE DEPTH WRITE for Grass Occlusion
-                    // Even if using FXAA intermediate, we MUST write the Voxel Depth to the MAIN Camera Depth Buffer
-                    // so subsequent passes (Grass) can test against it.
                     builder.SetRenderAttachment(compositeOutput, 0, AccessFlags.Write);
                     builder.SetRenderAttachmentDepth(resourceData.activeDepthTexture, AccessFlags.Write);
 
                     builder.SetRenderFunc((CompositePassData cData, RasterGraphContext context) =>
                     {
-                        if (useFXAA) { context.cmd.ClearRenderTarget(false, true, Color.clear); } // Clear intermediate color only
+                        if (useFXAA) { context.cmd.ClearRenderTarget(false, true, Color.clear); } 
                         
                         cData.material.SetTexture(_VoxelDepthTextureParams, cData.depthSource);
                         cData.material.SetFloat(_SharpnessParams, cData.sharpness);
+                        
                         if (cData.useFSR) cData.material.EnableKeyword("_UPSCALING_FSR"); else cData.material.DisableKeyword("_UPSCALING_FSR");
                         
-                        // This Blit writes Color to compositeOutput AND Depth to activeDepthTexture (via Shader SV_Depth)
+                        cData.material.SetInt(_ColorStepsParams, cData.colorSteps);
+                        if (cData.useIndexedColor) cData.material.EnableKeyword("_INDEXED_COLOR"); 
+                        else cData.material.DisableKeyword("_INDEXED_COLOR");
+
                         Blitter.BlitTexture(context.cmd, cData.source, new Vector4(1, 1, 0, 0), cData.material, 0);
                     });
                 }
 
                 // --- 4. Grass Pass (Rasterization) ---
-                // Grass is drawn AFTER Composite has populated the Depth Buffer.
-                // Grass is drawn BEFORE FXAA so it gets anti-aliased.
                 if (VoxelGrassRenderer.ActiveRenderers.Count > 0 || VoxelLeafRenderer.ActiveLeafRenderers.Count > 0)
                 {
                     using (var builder = renderGraph.AddRasterRenderPass<GrassPassData>("Voxel Vegetation", out var grassData))
                     {
                         grassData.colorTarget = compositeOutput;
                         grassData.depthTarget = resourceData.activeDepthTexture;
-
-                        // Bind targets
                         builder.SetRenderAttachment(grassData.colorTarget, 0, AccessFlags.Write);
                         builder.SetRenderAttachmentDepth(grassData.depthTarget, AccessFlags.ReadWrite);
 
                         builder.SetRenderFunc((GrassPassData gData, RasterGraphContext context) =>
                         {
-                            // Draw Grass
-                            foreach (var renderer in VoxelGrassRenderer.ActiveRenderers)
-                            {
-                                renderer.Draw(context.cmd);
-                            }
-                            // Draw Leaves
-                            foreach (var renderer in VoxelLeafRenderer.ActiveLeafRenderers)
-                            {
-                                renderer.Draw(context.cmd);
-                            }
+                            foreach (var renderer in VoxelGrassRenderer.ActiveRenderers) renderer.Draw(context.cmd);
+                            foreach (var renderer in VoxelLeafRenderer.ActiveLeafRenderers) renderer.Draw(context.cmd);
                         });
                     }
                 }
@@ -435,7 +437,6 @@ namespace VoxelEngine.Core.Rendering
                         fxaaData.material = _fxaaMaterial;
                         builder.UseTexture(fxaaData.source, AccessFlags.Read);
                         builder.SetRenderAttachment(resourceData.activeColorTexture, 0, AccessFlags.Write);
-                        // No depth write needed for FXAA
                         builder.SetRenderFunc((FXAAPassData fData, RasterGraphContext context) => { Blitter.BlitTexture(context.cmd, fData.source, new Vector4(1, 1, 0, 0), fData.material, 0); });
                     }
                 }

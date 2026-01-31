@@ -28,6 +28,8 @@ MonoBehaviour:
     enableFXAA: 1
     enableTAA: 1
     taaBlend: 0.93
+    indexedColor: 1
+    colorSteps: 16
     lodBias: 1
     useCameraFarPlane: 0
     blueNoiseTexture: {fileID: 2800000, guid: 8ed71a09edae5cd40be07beb8c8571a4, type: 3}
