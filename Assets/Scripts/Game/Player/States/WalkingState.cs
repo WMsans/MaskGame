@@ -3,22 +3,19 @@ using UnityEngine;
 public class WalkingState : PlayerState
 {
     private float _cameraPitch = 0f;
+    private IInteractable _currentInteractable; 
 
     public WalkingState(PlayerController controller) : base(controller) { }
 
     public override void Enter()
     {
-        // 1. Position Camera for First Person View
-        // We attach the camera to the controller so it moves with the player.
         Controller.mainCamera.transform.SetParent(Controller.transform);
-        Controller.mainCamera.transform.localPosition = new Vector3(0, 1.6f, 0); // Approx eye level
+        Controller.mainCamera.transform.localPosition = new Vector3(0, 1.6f, 0); 
         Controller.mainCamera.transform.localRotation = Quaternion.identity;
 
-        // 2. Lock Cursor for FPS controls
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
-        // 3. Ensure Rigidbody is ready for physics movement
         if (Controller.Rb != null)
         {
             Controller.Rb.isKinematic = false;
@@ -28,14 +25,17 @@ public class WalkingState : PlayerState
 
     public override void Exit()
     {
-        // Unlock cursor when leaving this state
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
+        
+        Controller.SetInteractionHint(false, "");
     }
 
     public override void Update()
     {
         HandleLook();
+        HandleInteractionCheck(); 
+        HandleInteractionInput(); 
     }
 
     public override void FixedUpdate()
@@ -47,21 +47,54 @@ public class WalkingState : PlayerState
     {
         Vector2 mouseDelta = Controller.MouseMoveAction.ReadValue<Vector2>();
 
-        // Horizontal Rotation (Rotate the Body/Controller)
         float yaw = mouseDelta.x * Controller.lookSensitivity;
         Controller.transform.Rotate(Vector3.up, yaw);
 
-        // Vertical Rotation (Rotate only the Camera)
         float pitch = mouseDelta.y * Controller.lookSensitivity;
         
-        // Handle Inversion logic from controller settings
         if (Controller.invertY) pitch = -pitch;
-        else pitch = -pitch; // Standard FPS: Mouse Up (positive Y) -> Look Up (Negative X Rot)
+        else pitch = -pitch; 
 
         _cameraPitch += pitch;
-        _cameraPitch = Mathf.Clamp(_cameraPitch, -85f, 85f); // Clamp to prevent neck breaking
+        _cameraPitch = Mathf.Clamp(_cameraPitch, -85f, 85f); 
 
         Controller.mainCamera.transform.localEulerAngles = new Vector3(_cameraPitch, 0, 0);
+    }
+
+    private void HandleInteractionCheck()
+    {
+        Ray ray = new Ray(Controller.mainCamera.transform.position, Controller.mainCamera.transform.forward);
+        RaycastHit hit;
+
+        if (Physics.Raycast(ray, out hit, Controller.interactionDistance, Controller.interactionLayer))
+        {
+            IInteractable interactable = hit.collider.GetComponent<IInteractable>();
+
+            if (interactable != null)
+            {
+                if (_currentInteractable != interactable)
+                {
+                    _currentInteractable = interactable;
+                    // UPDATED: Pass hit.transform to the Controller
+                    Controller.SetInteractionHint(true, interactable.GetInteractionPrompt(), hit.transform);
+                }
+                return; 
+            }
+        }
+
+        if (_currentInteractable != null)
+        {
+            _currentInteractable = null;
+            Controller.SetInteractionHint(false, "");
+        }
+    }
+
+    private void HandleInteractionInput()
+    {
+        if (_currentInteractable != null && Controller.InteractAction.WasPressedThisFrame())
+        {
+            _currentInteractable.Interact();
+        }
     }
 
     private void HandleMovement()
@@ -70,14 +103,11 @@ public class WalkingState : PlayerState
 
         Vector2 input = Controller.MoveAction.ReadValue<Vector2>();
         
-        // Calculate movement direction relative to where the player is looking
-        // Note: transform.forward is the body's forward direction (yaw), ignoring camera pitch
         Vector3 moveDir = Controller.transform.right * input.x + Controller.transform.forward * input.y;
         moveDir.Normalize();
 
         Vector3 targetVelocity = moveDir * Controller.walkSpeed;
 
-        // Apply to Rigidbody
         Controller.Rb.linearVelocity = targetVelocity;
     }
 }

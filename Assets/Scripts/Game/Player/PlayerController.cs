@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using TMPro;
 
 // -------------------------------------------------------------------------
 // 1. CONTEXT: The Player Controller (State Machine Manager)
@@ -10,6 +11,18 @@ public class PlayerController : MonoBehaviour
     [Tooltip("The object the camera will orbit around and look at.")]
     public Transform targetObject;
     public Camera mainCamera;
+
+    [Header("UI Settings")] 
+    public GameObject interactionHintObject; 
+    public TextMeshProUGUI interactionText;
+    
+    // NEW: Offset to make the text float above the object
+    [Tooltip("How high above the object the hint should float")]
+    public Vector3 interactionHintOffset = new Vector3(0, 2.0f, 0); 
+
+    [Header("Interaction Settings")]
+    public LayerMask interactionLayer; 
+    public float interactionDistance = 3.0f; 
 
     [Header("Rotation Settings")]
     public float rotationSpeed = 0.5f;
@@ -25,11 +38,12 @@ public class PlayerController : MonoBehaviour
     public float walkSpeed = 5.0f;
     public float lookSensitivity = 0.5f;
 
-    // Input Actions (Managed centrally so states can access them)
+    // Input Actions
     public InputAction RightClickAction { get; private set; }
     public InputAction MouseMoveAction { get; private set; }
     public InputAction ZoomAction { get; private set; }
     public InputAction MoveAction { get; private set; } 
+    public InputAction InteractAction { get; private set; } 
 
     // State Management
     private PlayerState _currentState;
@@ -37,32 +51,33 @@ public class PlayerController : MonoBehaviour
     // Components
     public Rigidbody Rb { get; private set; }
 
+    // NEW: Track the current object we are hinting at
+    private Transform _currentHintTarget;
+
     private void Awake()
     {
         Rb = GetComponent<Rigidbody>();
 
-        // Setup Input Actions
         RightClickAction = new InputAction(type: InputActionType.Button, binding: "<Mouse>/rightButton");
         MouseMoveAction = new InputAction(type: InputActionType.Value, binding: "<Mouse>/delta");
         ZoomAction = new InputAction(type: InputActionType.PassThrough, binding: "<Mouse>/scroll");
         
-        // Setup WASD Movement
         MoveAction = new InputAction("Move", binding: "<Gamepad>/leftStick");
         MoveAction.AddCompositeBinding("Dpad")
             .With("Up", "<Keyboard>/w")
             .With("Down", "<Keyboard>/s")
             .With("Left", "<Keyboard>/a")
             .With("Right", "<Keyboard>/d");
+
+        InteractAction = new InputAction(type: InputActionType.Button, binding: "<Keyboard>/e");
     }
 
     private void Start()
     {
-        if (targetObject == null)
-        {
-            Debug.LogWarning("Target Object is not assigned! Please assign an object for the camera to orbit.");
-        }
+        if (targetObject == null) Debug.LogWarning("Target Object is not assigned!");
+        
+        SetInteractionHint(false, "");
 
-        // Set the initial state to RotatorState
         ChangeState(new RotatorState(this));
     }
 
@@ -72,6 +87,7 @@ public class PlayerController : MonoBehaviour
         MouseMoveAction.Enable();
         ZoomAction.Enable();
         MoveAction.Enable();
+        InteractAction.Enable();
     }
 
     private void OnDisable()
@@ -80,18 +96,23 @@ public class PlayerController : MonoBehaviour
         MouseMoveAction.Disable();
         ZoomAction.Disable();
         MoveAction.Disable();
+        InteractAction.Disable();
     }
 
     private void Update()
     {
-        // Execute the current state's logic
         _currentState?.Update();
     }
     
     private void FixedUpdate()
     {
-        // Execute physics logic
         _currentState?.FixedUpdate();
+    }
+    
+    // NEW: Update UI position after camera has moved
+    private void LateUpdate()
+    {
+        UpdateHintPosition();
     }
 
     public void ChangeState(PlayerState newState)
@@ -101,11 +122,52 @@ public class PlayerController : MonoBehaviour
         _currentState?.Enter();
     }
 
-    // -------------------------------------------------------------------------
-    // EXPOSED METHOD: Switches to First Person Walking Mode
-    // -------------------------------------------------------------------------
     public void ExitMaskMaker()
     {
         ChangeState(new WalkingState(this));
+    }
+
+    // UPDATED: Now accepts a target transform to track
+    public void SetInteractionHint(bool active, string text, Transform target = null)
+    {
+        if (interactionHintObject != null)
+        {
+            interactionHintObject.SetActive(active);
+            
+            if (active)
+            {
+                if (interactionText != null) interactionText.text = text;
+                _currentHintTarget = target;
+                
+                // Update position immediately so it doesn't flicker
+                UpdateHintPosition();
+            }
+            else
+            {
+                _currentHintTarget = null;
+            }
+        }
+    }
+
+    // NEW: Logic to move the UI to the object's screen position
+    private void UpdateHintPosition()
+    {
+        if (interactionHintObject.activeSelf && _currentHintTarget != null && mainCamera != null)
+        {
+            // Convert World Position -> Screen Position
+            Vector3 worldPos = _currentHintTarget.position + interactionHintOffset;
+            Vector3 screenPos = mainCamera.WorldToScreenPoint(worldPos) + new Vector3(0, 500, 0);
+
+            // Check if object is behind the camera (z < 0)
+            if (screenPos.z > 0)
+            {
+                interactionHintObject.transform.position = screenPos;
+            }
+            else
+            {
+                // Optionally hide it if it goes behind us, or clamp it
+                // For now, we keep the previous position or move it offscreen
+            }
+        }
     }
 }
