@@ -37,6 +37,11 @@ namespace VoxelEngine.Core.Rendering
             public bool enableTAA = true; 
             [Range(0.0f, 1.0f)] public float taaBlend = 0.93f; 
             
+            [Header("Celluloid Outline")]
+            [Range(0.0f, 4.0f)] public float outlineThickness = 1.5f; // [CHANGE] Default thicker
+            [Range(0.0001f, 0.05f)] public float outlineThreshold = 0.001f; // [CHANGE] Default sensitive
+            public Color outlineColor = Color.black;
+
             [Header("Retro Look")]
             public bool indexedColor = false; 
             [Range(2, 64)] 
@@ -143,8 +148,12 @@ namespace VoxelEngine.Core.Rendering
             private static readonly int _SharpnessParams = Shader.PropertyToID("_Sharpness");
             private static readonly int _HistoryTexParams = Shader.PropertyToID("_HistoryTex");
             private static readonly int _BlendParams = Shader.PropertyToID("_Blend");
-            
             private static readonly int _ColorStepsParams = Shader.PropertyToID("_ColorSteps");
+            
+            // [CHANGE] New Outline IDs
+            private static readonly int _OutlineThicknessID = Shader.PropertyToID("_OutlineThickness");
+            private static readonly int _OutlineThresholdID = Shader.PropertyToID("_OutlineThreshold");
+            private static readonly int _OutlineColorID = Shader.PropertyToID("_OutlineColor");
 
             private RTHandle _albedoHandle;
             private RTHandle _normalHandle;
@@ -212,7 +221,6 @@ namespace VoxelEngine.Core.Rendering
                 return result;
             }
 
-            // --- Pass Data Classes ---
             private class PassData {
                 public ComputeShader computeShader; public int kernel; public TextureHandle targetColor; public TextureHandle targetDepth; public TextureHandle targetMotionVector; public TextureHandle sourceDepth; public TextureHandle sourceColor; public Matrix4x4 cameraToWorld; public Matrix4x4 cameraInverseProjection; public Matrix4x4 viewProj; public Matrix4x4 prevViewProj; public Vector4 zBufferParams; public int width; public int height; public Vector4 mainLightPosition; public Vector4 mainLightColor; public Vector4 raytraceParams; public GraphicsBuffer nodeBuffer; public GraphicsBuffer payloadBuffer; public GraphicsBuffer brickDataBuffer; public GraphicsBuffer pageTableBuffer; public GraphicsBuffer tlasGridBuffer; public GraphicsBuffer tlasChunkIndexBuffer; public Vector3 tlasBoundsMin; public Vector3 tlasBoundsMax; public int tlasResolution; public GraphicsBuffer chunkBuffer; public int chunkCount; public GraphicsBuffer materialBuffer; public GraphicsBuffer raycastBuffer; public TextureHandle albedoArray; public TextureHandle normalArray; public TextureHandle maskArray; public int frameCount; public TextureHandle blueNoise; public Vector2 mousePosition; public int maxIterations; public int maxMarchSteps;
             }
@@ -225,6 +233,10 @@ namespace VoxelEngine.Core.Rendering
                 public float sharpness;
                 public bool useIndexedColor;
                 public int colorSteps;
+                // [CHANGE] New Outline Data
+                public float outlineThickness;
+                public float outlineThreshold;
+                public Color outlineColor;
             }
             
             private class FXAAPassData { public TextureHandle source; public Material material; }
@@ -386,6 +398,10 @@ namespace VoxelEngine.Core.Rendering
                     compData.sharpness = _settings.sharpness;
                     compData.useIndexedColor = _settings.indexedColor;
                     compData.colorSteps = _settings.colorSteps;
+                    // [CHANGE] Pass Outline Settings
+                    compData.outlineThickness = _settings.outlineThickness;
+                    compData.outlineThreshold = _settings.outlineThreshold;
+                    compData.outlineColor = _settings.outlineColor;
 
                     builder.UseTexture(compData.source, AccessFlags.Read);
                     builder.UseTexture(compData.depthSource, AccessFlags.Read);
@@ -399,6 +415,11 @@ namespace VoxelEngine.Core.Rendering
                         
                         cData.material.SetTexture(_VoxelDepthTextureParams, cData.depthSource);
                         cData.material.SetFloat(_SharpnessParams, cData.sharpness);
+                        
+                        // [CHANGE] Apply Outline Settings
+                        cData.material.SetFloat(_OutlineThicknessID, cData.outlineThickness);
+                        cData.material.SetFloat(_OutlineThresholdID, cData.outlineThreshold);
+                        cData.material.SetColor(_OutlineColorID, cData.outlineColor);
                         
                         if (cData.useFSR) cData.material.EnableKeyword("_UPSCALING_FSR"); else cData.material.DisableKeyword("_UPSCALING_FSR");
                         

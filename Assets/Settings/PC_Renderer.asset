@@ -25,11 +25,14 @@ MonoBehaviour:
     marchSteps: 32
     upscalingMode: 0
     sharpness: 0.5
-    enableFXAA: 1
-    enableTAA: 1
+    enableFXAA: 0
+    enableTAA: 0
     taaBlend: 0.93
+    outlineThickness: 1
+    outlineThreshold: 0.001
+    outlineColor: {r: 0, g: 0, b: 0, a: 1}
     indexedColor: 1
-    colorSteps: 16
+    colorSteps: 8
     lodBias: 1
     useCameraFarPlane: 0
     blueNoiseTexture: {fileID: 2800000, guid: 8ed71a09edae5cd40be07beb8c8571a4, type: 3}
