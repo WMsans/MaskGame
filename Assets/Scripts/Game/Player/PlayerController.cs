@@ -124,6 +124,16 @@ public class PlayerController : MonoBehaviour
 
     public void ExitMaskMaker()
     {
+        // NEW: Check if we are currently targeting a MaskMaker and tell it to reset
+        if (targetObject != null)
+        {
+            MaskMakerInteractable maskMaker = targetObject.GetComponent<MaskMakerInteractable>();
+            if (maskMaker != null)
+            {
+                maskMaker.ExitInteraction();
+            }
+        }
+
         ChangeState(new WalkingState(this));
     }
 
