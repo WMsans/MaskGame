@@ -156,7 +156,7 @@ public class PlayerController : MonoBehaviour
         {
             // Convert World Position -> Screen Position
             Vector3 worldPos = _currentHintTarget.position + interactionHintOffset;
-            Vector3 screenPos = mainCamera.WorldToScreenPoint(worldPos) + new Vector3(0, 500, 0);
+            Vector3 screenPos = mainCamera.WorldToScreenPoint(worldPos) + new Vector3(0, 100, 0);
 
             // Check if object is behind the camera (z < 0)
             if (screenPos.z > 0)
