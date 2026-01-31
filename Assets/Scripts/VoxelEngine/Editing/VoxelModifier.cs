@@ -2,7 +2,8 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using VoxelEngine.Core.Data;
 using VoxelEngine.Core.Interfaces;
-using Unity.Collections; // Required for NativeArray
+using Unity.Collections;
+using System.Collections.Generic;
 
 namespace VoxelEngine.Core.Editing
 {
@@ -24,27 +25,17 @@ namespace VoxelEngine.Core.Editing
             VoxelVolume vol = _storage as VoxelVolume;
             if (vol == null) return;
 
-            // 1. Check Scale Match (Must match global LOD0 size)
             float volVoxelSize = vol.WorldSize / vol.Resolution;
             float globalVoxelSize = VoxelEditManager.Instance.voxelSize;
             
             if (!Mathf.Approximately(volVoxelSize, globalVoxelSize)) return;
 
-            // 2. Alignment Check [Omitted for brevity]
-
-            // 3. Calculate Brush in Voxel Space
-            // [FIX START] -----------------------------------------------------------
-            // Use InverseTransformPoint to handle Rotation and Scale of the Volume
-            // This converts the World Position (brush.position) into Local Space relative to the Volume
             Vector3 localBrushPos = vol.transform.InverseTransformPoint(brush.position);
-
             float worldToVoxelScale = (float)vol.Resolution / vol.WorldSize;
             Vector3 brushPosVoxel = localBrushPos * worldToVoxelScale;
             float brushRadiusVoxel = brush.radius * worldToVoxelScale;
             Vector3 brushBoundsVoxel = brush.bounds * worldToVoxelScale;
-            // [FIX END] -------------------------------------------------------------
 
-            // 4. Determine Brick Range
             Bounds aabb = new Bounds(brushPosVoxel, Vector3.zero);
             if (brush.shape == (int)BrushShape.Sphere)
                 aabb.extents = Vector3.one * brushRadiusVoxel;
@@ -64,12 +55,10 @@ namespace VoxelEngine.Core.Editing
             int rangeY = Mathf.Max(1, maxBrickId.y - minBrickId.y + 1);
             int rangeZ = Mathf.Max(1, maxBrickId.z - minBrickId.z + 1);
 
-            // 5. Select Kernels
             int kernelAlloc = _shader.FindKernel(brush.shape == 0 ? "AllocateNodesSphere" : "AllocateNodesCube");
             int kernelEdit = _shader.FindKernel(brush.shape == 0 ? "EditVoxelsSphere" : "EditVoxelsCube");
             int kernelExtract = _shader.FindKernel("ExtractBricks");
 
-            // Set Common Uniforms
             _shader.SetInts("_MinBrickIndex", new int[] { minBrickId.x, minBrickId.y, minBrickId.z });
             _shader.SetInts("_MaxBrickIndex", new int[] { maxBrickId.x, maxBrickId.y, maxBrickId.z });
             _shader.SetFloat("_GridSize", (float)vol.Resolution);
@@ -84,7 +73,6 @@ namespace VoxelEngine.Core.Editing
             _shader.SetInt("_BrushOp", brush.op);
             _shader.SetFloat("_Smoothness", 1.0f);
 
-            // Set Buffers (Alloc & Edit)
             _shader.SetBuffer(kernelAlloc, "_NodeBuffer", vol.NodeBuffer);
             _shader.SetBuffer(kernelAlloc, "_CounterBuffer", vol.CounterBuffer);
             _shader.SetBuffer(kernelAlloc, "_PayloadBuffer", vol.PayloadBuffer);
@@ -96,19 +84,14 @@ namespace VoxelEngine.Core.Editing
             _shader.SetBuffer(kernelEdit, "_BrickDataBuffer", vol.BrickDataBuffer);
             _shader.SetBuffer(kernelEdit, "_PageTableBuffer", vol.BufferManager.PageTableBuffer);
 
-            // 6. DISPATCH: Apply Edits to VRAM
             _shader.Dispatch(kernelAlloc, Mathf.CeilToInt(rangeX / 8.0f), Mathf.CeilToInt(rangeY / 8.0f), Mathf.CeilToInt(rangeZ / 8.0f));
             _shader.Dispatch(kernelEdit, rangeX, rangeY, rangeZ);
 
-            // --- Capture Edits ---
-            
-            // A. Create Readback Buffer
             int totalBricks = rangeX * rangeY * rangeZ;
             int totalVoxels = totalBricks * SVONode.BRICK_VOXEL_COUNT;
             
             GraphicsBuffer readbackBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, totalVoxels, sizeof(uint));
 
-            // B. Dispatch Extract Kernel
             _shader.SetBuffer(kernelExtract, "_NodeBuffer", vol.NodeBuffer);
             _shader.SetBuffer(kernelExtract, "_PayloadBuffer", vol.PayloadBuffer);
             _shader.SetBuffer(kernelExtract, "_BrickDataBuffer", vol.BrickDataBuffer);
@@ -117,7 +100,6 @@ namespace VoxelEngine.Core.Editing
             
             _shader.Dispatch(kernelExtract, Mathf.CeilToInt(rangeX / 4.0f), Mathf.CeilToInt(rangeY / 4.0f), Mathf.CeilToInt(rangeZ / 4.0f));
 
-            // C. Request Async Readback
             Vector3 worldOrigin = vol.WorldOrigin;
             
             AsyncGPUReadback.Request(readbackBuffer, (request) =>
@@ -132,14 +114,14 @@ namespace VoxelEngine.Core.Editing
 
                 if (VoxelEditManager.Instance == null) return;
 
-                // D. Process Data
                 using (NativeArray<uint> rawData = request.GetData<uint>())
                 {
-                    // Calculate Volume's Global Brick Origin
                     Vector3Int volOriginBrick = VoxelEditManager.Instance.GetBrickCoordinate(worldOrigin);
-                    
                     int cursor = 0;
                     
+                    // Batched Update Logic
+                    List<VoxelEditManager.EditData> batch = new List<VoxelEditManager.EditData>(totalBricks);
+
                     for (int z = 0; z < rangeZ; z++)
                     {
                         for (int y = 0; y < rangeY; y++)
@@ -152,10 +134,13 @@ namespace VoxelEngine.Core.Editing
                                 uint[] brickData = rawData.GetSubArray(cursor, SVONode.BRICK_VOXEL_COUNT).ToArray();
                                 cursor += SVONode.BRICK_VOXEL_COUNT;
 
-                                VoxelEditManager.Instance.RegisterEdit(globalCoord, brickData);
+                                batch.Add(new VoxelEditManager.EditData { Coordinate = globalCoord, VoxelData = brickData });
                             }
                         }
                     }
+
+                    // Send the entire batch at once
+                    VoxelEditManager.Instance.RegisterEdits(batch);
                 }
             });
         }

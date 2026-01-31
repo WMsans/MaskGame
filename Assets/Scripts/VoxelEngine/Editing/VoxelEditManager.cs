@@ -21,13 +21,8 @@ namespace VoxelEngine.Core.Editing
         private const uint MAT_PASSTHROUGH = 255; // Special flag: Voxel should be ignored (fallback to procedural)
         
         // Spatial Hashing Configuration
-        // A Meta-Chunk contains META_CHUNK_DIM^3 Bricks.
-        // If BrickSize=8, 64 Bricks = 512 Voxels.
         private const int META_CHUNK_DIM = 64; 
 
-        // Key 1: Meta-Chunk Coordinate (Spatial Hash)
-        // Key 2: Global Brick Coordinate (at LOD X resolution)
-        // Value: The full voxel data for that brick (6x6x6 flattened = 216 uints)
         // _lodDatabases[0] is high-res, [1] is half-res, etc.
         private Dictionary<Vector3Int, Dictionary<Vector3Int, uint[]>>[] _lodDatabases;
 
@@ -101,24 +96,16 @@ namespace VoxelEngine.Core.Editing
 
         private List<EditData> _cachedEdits = new List<EditData>();
 
-        /// <summary>
-        /// Retrieves all edits that intersect with the given world bounds for a specific LOD level.
-        /// Uses Spatial Hashing to minimize checks.
-        /// </summary>
-        /// <param name="bounds">The world bounds to query.</param>
-        /// <param name="lodLevel">The LOD level to retrieve edits for.</param>
         public List<EditData> GetEdits(Bounds bounds, int lodLevel = 0)
         {
             _cachedEdits.Clear();
             if (lodLevel < 0 || lodLevel >= MAX_LOD) return _cachedEdits;
 
-            // Calculate dimensions at this LOD
             float currentVoxelSize = voxelSize * Mathf.Pow(2, lodLevel);
             float brickWorldSize = SVONode.BRICK_SIZE * currentVoxelSize;
             float metaChunkWorldSize = brickWorldSize * META_CHUNK_DIM;
             Vector3 brickSizeVec = Vector3.one * brickWorldSize;
 
-            // Determine relevant Meta-Chunks
             Vector3 min = bounds.min;
             Vector3 max = bounds.max;
 
@@ -132,7 +119,6 @@ namespace VoxelEngine.Core.Editing
 
             var db = _lodDatabases[lodLevel];
 
-            // Iterate only relevant Meta-Chunks
             for (int z = minMetaZ; z <= maxMetaZ; z++)
             {
                 for (int y = minMetaY; y <= maxMetaY; y++)
@@ -142,7 +128,6 @@ namespace VoxelEngine.Core.Editing
                         Vector3Int metaCoord = new Vector3Int(x, y, z);
                         if (db.TryGetValue(metaCoord, out var bucket))
                         {
-                            // Check bricks within this bucket
                             foreach (var kvp in bucket)
                             {
                                 Vector3 brickOrigin = new Vector3(kvp.Key.x, kvp.Key.y, kvp.Key.z) * brickWorldSize;
@@ -161,65 +146,96 @@ namespace VoxelEngine.Core.Editing
         }
 
         /// <summary>
-        /// Registers a delta (edit) for a specific brick at LOD 0 and propagates it up the hierarchy.
+        /// Registers a single delta. Used for small updates.
         /// </summary>
-        /// <param name="coord">The global brick coordinate (ChunkOrigin / BrickSize) at LOD 0.</param>
-        /// <param name="data">The 216 integers representing the packed voxels in the brick.</param>
         public void RegisterEdit(Vector3Int coord, uint[] data)
         {
-            if (data == null || data.Length != SVONode.BRICK_VOXEL_COUNT)
-            {
-                Debug.LogError($"[GlobalVoxelEditManager] Invalid edit data. Expected {SVONode.BRICK_VOXEL_COUNT} uints.");
-                return;
-            }
+            // Wrap in list to reuse the optimized batch logic
+            RegisterEdits(new List<EditData> { new EditData { Coordinate = coord, VoxelData = data } });
+        }
+
+        /// <summary>
+        /// Registers a batch of edits. Optimized to propagate LODs efficiently.
+        /// </summary>
+        public void RegisterEdits(List<EditData> edits)
+        {
+            if (edits == null || edits.Count == 0) return;
             
             InitializeDatabases();
 
-            // 1. Store LOD 0
-            SetBrickData(0, coord, (uint[])data.Clone());
+            // 1. Apply all LOD0 edits and collect unique parents
+            HashSet<Vector3Int> parentsToUpdate = new HashSet<Vector3Int>();
+            
+            foreach (var edit in edits)
+            {
+                if (edit.VoxelData == null || edit.VoxelData.Length != SVONode.BRICK_VOXEL_COUNT) continue;
+                
+                SetBrickData(0, edit.Coordinate, (uint[])edit.VoxelData.Clone());
 
-            // 2. Propagate Up
-            PropagateEdit(coord, 0);
+                // Calculate parent coordinate (LOD 1)
+                Vector3Int parentCoord = new Vector3Int(
+                    Mathf.FloorToInt(edit.Coordinate.x / 2.0f),
+                    Mathf.FloorToInt(edit.Coordinate.y / 2.0f),
+                    Mathf.FloorToInt(edit.Coordinate.z / 2.0f)
+                );
+                parentsToUpdate.Add(parentCoord);
+            }
+
+            // 2. Propagate Up Level by Level
+            // We iterate from LOD 1 up to MAX_LOD
+            for (int level = 1; level < MAX_LOD; level++)
+            {
+                int childLevel = level - 1;
+                HashSet<Vector3Int> nextParents = new HashSet<Vector3Int>();
+
+                foreach (var parentCoord in parentsToUpdate)
+                {
+                    // Recompute this parent brick based on its children (at childLevel)
+                    bool kept = RecomputeBrick(parentCoord, level, childLevel);
+
+                    // If this brick exists (was kept/updated), we must check its parent next
+                    if (kept && level < MAX_LOD - 1)
+                    {
+                        Vector3Int grandParent = new Vector3Int(
+                            Mathf.FloorToInt(parentCoord.x / 2.0f),
+                            Mathf.FloorToInt(parentCoord.y / 2.0f),
+                            Mathf.FloorToInt(parentCoord.z / 2.0f)
+                        );
+                        nextParents.Add(grandParent);
+                    }
+                }
+
+                // Move to next level
+                parentsToUpdate = nextParents;
+                if (parentsToUpdate.Count == 0) break;
+            }
         }
 
-        private void PropagateEdit(Vector3Int childCoord, int currentLevel)
+        /// <summary>
+        /// Recomputes a specific brick at 'level' by downsampling children from 'childLevel'.
+        /// Returns true if the brick contains data and was saved, false if it was empty/removed.
+        /// </summary>
+        private bool RecomputeBrick(Vector3Int parentCoord, int level, int childLevel)
         {
-            if (currentLevel >= MAX_LOD - 1) return;
-
-            int nextLevel = currentLevel + 1;
-            
-            // Calculate Parent Coordinate (integer division by 2)
-            Vector3Int parentCoord = new Vector3Int(
-                Mathf.FloorToInt(childCoord.x / 2.0f),
-                Mathf.FloorToInt(childCoord.y / 2.0f),
-                Mathf.FloorToInt(childCoord.z / 2.0f)
-            );
-
-            // Create/Update Parent Brick
             uint[] parentData = new uint[SVONode.BRICK_VOXEL_COUNT];
             bool parentHasAnyData = false;
             
             // Loop over Parent Brick Voxels (including padding)
-            // Dimensions: 6x6x6
             for (int z = 0; z < SVONode.BRICK_STORAGE_SIZE; z++)
             {
                 for (int y = 0; y < SVONode.BRICK_STORAGE_SIZE; y++)
                 {
                     for (int x = 0; x < SVONode.BRICK_STORAGE_SIZE; x++)
                     {
-                        // Logical position relative to Parent Brick Origin (in Parent Voxel Units)
-                        // Range: -1 to 4 (since PADDING is 1)
                         int logicalX = x - SVONode.BRICK_PADDING;
                         int logicalY = y - SVONode.BRICK_PADDING;
                         int logicalZ = z - SVONode.BRICK_PADDING;
 
-                        // Map to Child Coordinate System (LOD N)
-                        // Each Parent Voxel covers 2x2x2 Child Voxels
+                        // Map to Child Coordinate System
                         int childStartX = logicalX * 2;
                         int childStartY = logicalY * 2;
                         int childStartZ = logicalZ * 2;
 
-                        // Accumulators for downsampling
                         float accSDF = 0;
                         Vector3 accNorm = Vector3.zero;
                         Dictionary<uint, int> matCounts = new Dictionary<uint, int>();
@@ -236,34 +252,25 @@ namespace VoxelEngine.Core.Editing
                                     int globalChildY = childStartY + cy;
                                     int globalChildZ = childStartZ + cz;
 
-                                    // Determine which Child Brick this falls into
-                                    // The Parent Brick starts at parentCoord * 2 (in Child Coords)
-                                    // Relative to Parent Origin, we are at (globalChildX, ...)
-                                    
-                                    // Global Child Block Coordinate relative to the "Base" child (parentCoord * 2)
                                     int childBlockOffX = Mathf.FloorToInt(globalChildX / (float)SVONode.BRICK_SIZE);
                                     int childBlockOffY = Mathf.FloorToInt(globalChildY / (float)SVONode.BRICK_SIZE);
                                     int childBlockOffZ = Mathf.FloorToInt(globalChildZ / (float)SVONode.BRICK_SIZE);
 
-                                    // Handle negative coordinates (padding area might dip into previous block)
                                     if (globalChildX < 0) childBlockOffX = -1;
                                     if (globalChildY < 0) childBlockOffY = -1;
                                     if (globalChildZ < 0) childBlockOffZ = -1;
 
                                     Vector3Int targetChildCoord = parentCoord * 2 + new Vector3Int(childBlockOffX, childBlockOffY, childBlockOffZ);
                                     
-                                    // Local voxel index within that child brick
                                     int localChildVoxelX = (globalChildX - (childBlockOffX * SVONode.BRICK_SIZE)) + SVONode.BRICK_PADDING;
                                     int localChildVoxelY = (globalChildY - (childBlockOffY * SVONode.BRICK_SIZE)) + SVONode.BRICK_PADDING;
                                     int localChildVoxelZ = (globalChildZ - (childBlockOffZ * SVONode.BRICK_SIZE)) + SVONode.BRICK_PADDING;
 
-                                    // Sample
                                     float s_sdf = MAX_SDF_RANGE;
                                     Vector3 s_norm = Vector3.up;
                                     uint s_mat = MAT_PASSTHROUGH;
 
-                                    // Use Helper
-                                    if (TryGetBrickData(currentLevel, targetChildCoord, out uint[] childData))
+                                    if (TryGetBrickData(childLevel, targetChildCoord, out uint[] childData))
                                     {
                                         int flatIdx = localChildVoxelZ * SVONode.BRICK_STORAGE_SIZE * SVONode.BRICK_STORAGE_SIZE +
                                                       localChildVoxelY * SVONode.BRICK_STORAGE_SIZE +
@@ -275,7 +282,6 @@ namespace VoxelEngine.Core.Editing
                                         }
                                     }
 
-                                    // Only accumulate if not passthrough
                                     if (s_mat != MAT_PASSTHROUGH)
                                     {
                                         accSDF += s_sdf;
@@ -288,19 +294,16 @@ namespace VoxelEngine.Core.Editing
                             }
                         }
 
-                        // Store Result
                         int parentFlatIdx = z * SVONode.BRICK_STORAGE_SIZE * SVONode.BRICK_STORAGE_SIZE +
                                             y * SVONode.BRICK_STORAGE_SIZE +
                                             x;
 
                         if (validSampleCount > 0)
                         {
-                            // Average
                             float avgSDF = accSDF / validSampleCount;
                             Vector3 avgNorm = accNorm.normalized;
                             
-                            // Dominant Material
-                            uint domMat = 1; // Default fallback
+                            uint domMat = 1;
                             int maxCount = -1;
                             foreach(var kvp in matCounts)
                             {
@@ -312,39 +315,30 @@ namespace VoxelEngine.Core.Editing
                         }
                         else
                         {
-                            // No valid children -> Passthrough
                             parentData[parentFlatIdx] = PackVoxelData(MAX_SDF_RANGE, Vector3.up, MAT_PASSTHROUGH);
                         }
                     }
                 }
             }
 
-            // Save Parent
             if (parentHasAnyData)
             {
-                SetBrickData(nextLevel, parentCoord, parentData);
-                // Recurse
-                PropagateEdit(parentCoord, nextLevel);
+                SetBrickData(level, parentCoord, parentData);
+                return true;
             }
             else
             {
-                // Remove if empty
-                RemoveBrickData(nextLevel, parentCoord);
+                RemoveBrickData(level, parentCoord);
+                return false;
             }
         }
 
-        /// <summary>
-        /// Checks if a specific brick has been modified at LOD 0.
-        /// </summary>
         public bool HasEdit(Vector3Int coord)
         {
             if (_lodDatabases == null || _lodDatabases.Length == 0) return false;
             return TryGetBrickData(0, coord, out _);
         }
 
-        /// <summary>
-        /// Clears all stored edits.
-        /// </summary>
         public void Clear()
         {
             if (_lodDatabases != null)
@@ -354,11 +348,8 @@ namespace VoxelEngine.Core.Editing
             _totalEdits = 0;
         }
 
-        // --- Spatial Hashing Helpers ---
-
         private Vector3Int GetMetaChunkCoord(Vector3Int brickCoord)
         {
-            // Helper for floor division
             return new Vector3Int(
                 Mathf.FloorToInt(brickCoord.x / (float)META_CHUNK_DIM),
                 Mathf.FloorToInt(brickCoord.y / (float)META_CHUNK_DIM),
@@ -392,7 +383,6 @@ namespace VoxelEngine.Core.Editing
                 db.Add(metaCoord, bucket);
             }
 
-            // Track count only for LOD 0
             if (lod == 0 && !bucket.ContainsKey(brickCoord))
             {
                 _totalEdits++;
@@ -414,26 +404,16 @@ namespace VoxelEngine.Core.Editing
                 {
                     bucket.Remove(brickCoord);
                     if (lod == 0) _totalEdits--;
-
-                    // Clean up empty buckets
-                    if (bucket.Count == 0)
-                    {
-                        db.Remove(metaCoord);
-                    }
+                    if (bucket.Count == 0) db.Remove(metaCoord);
                 }
             }
         }
 
-        /// <summary>
-        /// Helper to convert a World Position to the Global Brick Coordinate (LOD 0).
-        /// </summary>
         public Vector3Int GetBrickCoordinate(Vector3 worldPos)
         {            
             float brickSizeWorld = SVONode.BRICK_SIZE * voxelSize;
             return Vector3Int.FloorToInt(worldPos / brickSizeWorld);
         }
-
-        // --- Packing Helpers (Replicated from HLSL) ---
 
         private static uint PackVoxelData(float sdf, Vector3 normal, uint materialID)
         {
@@ -455,9 +435,8 @@ namespace VoxelEngine.Core.Editing
 
         private static uint PackNormalOct(Vector3 n)
         {
-            // Avoid div by zero
             float sum = Mathf.Abs(n.x) + Mathf.Abs(n.y) + Mathf.Abs(n.z);
-            if (sum < 1e-5f) return 0; // Default
+            if (sum < 1e-5f) return 0;
 
             n /= sum;
             Vector2 oct = n.z >= 0 ? new Vector2(n.x, n.y) : (Vector2.one - new Vector2(Mathf.Abs(n.y), Mathf.Abs(n.x))) * new Vector2(n.x >= 0 ? 1 : -1, n.y >= 0 ? 1 : -1);

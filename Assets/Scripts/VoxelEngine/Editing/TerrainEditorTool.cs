@@ -126,5 +126,37 @@ namespace VoxelEngine.Core.Editing
                 Gizmos.DrawWireSphere(_currentHitPoint, brushRadius);
             }
         }
+
+        /// <summary>
+        /// Sets the size of the brush. Value is clamped to a minimum of 0.1f.
+        /// </summary>
+        public void SetBrushRadius(float radius)
+        {
+            brushRadius = Mathf.Max(0.1f, radius);
+        }
+
+        /// <summary>
+        /// Sets the material index to be applied (0 or greater).
+        /// </summary>
+        public void SetBrushMaterial(int materialIndex)
+        {
+            brushMaterial = Mathf.Max(0, materialIndex + 1);
+        }
+
+        /// <summary>
+        /// Sets the time interval (in seconds) between edit actions while the button is held.
+        /// </summary>
+        public void SetEditRate(float rate)
+        {
+            editRate = Mathf.Max(0.0f, rate);
+        }
+
+        /// <summary>
+        /// Sets the operation mode (Add, Remove, etc.).
+        /// </summary>
+        public void SetEditMode(int mode)
+        {
+            editMode = (BrushOp)mode;
+        }
     }
 }
