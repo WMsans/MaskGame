@@ -1,7 +1,8 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
-using UnityEngine.EventSystems; // [Added] Required for UI detection
+using UnityEngine.EventSystems;
+using UnityEngine.VFX; // [Added] Required for VisualEffect
 using VoxelEngine.Core;
 using VoxelEngine.Core.Data;
 using VoxelEngine.Core.Rendering;
@@ -16,6 +17,9 @@ namespace VoxelEngine.Core.Editing
         public int brushMaterial = 1;
         public float editRate = 0.1f; 
         public BrushOp editMode = BrushOp.Add;
+
+        [Header("VFX")]
+        public VisualEffect carvingVFX; // [Added] Reference to the VFX Graph
         
         // Removed StructuralIntegrityAnalyzer dependency
 
@@ -94,6 +98,13 @@ namespace VoxelEngine.Core.Editing
         private void ApplyBrush(BrushOp op)
         {
             if (voxelModifierShader == null) return;
+
+            if (op == BrushOp.Subtract && carvingVFX != null)
+            {
+                carvingVFX.SetVector3("Position", _currentHitPoint);
+                carvingVFX.Play();
+            }
+
             if (VoxelEditManager.Instance == null)
             {
                 Debug.LogWarning("VoxelEditManager is missing. Edits will not be saved.");
