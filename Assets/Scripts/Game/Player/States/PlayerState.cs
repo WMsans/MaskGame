@@ -9,5 +9,6 @@ public abstract class PlayerState
 
     public virtual void Enter() { }
     public virtual void Exit() { }
-    public abstract void Update();
+    public abstract void Update();   
+    public virtual void FixedUpdate() { }
 }

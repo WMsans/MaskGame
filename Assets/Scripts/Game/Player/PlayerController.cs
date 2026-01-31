@@ -9,6 +9,7 @@ public class PlayerController : MonoBehaviour
     [Header("References")]
     [Tooltip("The object the camera will orbit around and look at.")]
     public Transform targetObject;
+    public Camera mainCamera;
 
     [Header("Rotation Settings")]
     public float rotationSpeed = 0.5f;
@@ -19,21 +20,39 @@ public class PlayerController : MonoBehaviour
     public float zoomSpeed = 0.5f;
     public float minZoomDistance = 2.0f;
     public float maxZoomDistance = 50.0f;
+    
+    [Header("Walking Settings")]
+    public float walkSpeed = 5.0f;
+    public float lookSensitivity = 0.5f;
 
     // Input Actions (Managed centrally so states can access them)
     public InputAction RightClickAction { get; private set; }
     public InputAction MouseMoveAction { get; private set; }
     public InputAction ZoomAction { get; private set; }
+    public InputAction MoveAction { get; private set; } 
 
     // State Management
     private PlayerState _currentState;
+    
+    // Components
+    public Rigidbody Rb { get; private set; }
 
     private void Awake()
     {
+        Rb = GetComponent<Rigidbody>();
+
         // Setup Input Actions
         RightClickAction = new InputAction(type: InputActionType.Button, binding: "<Mouse>/rightButton");
         MouseMoveAction = new InputAction(type: InputActionType.Value, binding: "<Mouse>/delta");
         ZoomAction = new InputAction(type: InputActionType.PassThrough, binding: "<Mouse>/scroll");
+        
+        // Setup WASD Movement
+        MoveAction = new InputAction("Move", binding: "<Gamepad>/leftStick");
+        MoveAction.AddCompositeBinding("Dpad")
+            .With("Up", "<Keyboard>/w")
+            .With("Down", "<Keyboard>/s")
+            .With("Left", "<Keyboard>/a")
+            .With("Right", "<Keyboard>/d");
     }
 
     private void Start()
@@ -43,7 +62,7 @@ public class PlayerController : MonoBehaviour
             Debug.LogWarning("Target Object is not assigned! Please assign an object for the camera to orbit.");
         }
 
-        // Set the initial state to RotatorState (the logic from your existing rotator)
+        // Set the initial state to RotatorState
         ChangeState(new RotatorState(this));
     }
 
@@ -52,6 +71,7 @@ public class PlayerController : MonoBehaviour
         RightClickAction.Enable();
         MouseMoveAction.Enable();
         ZoomAction.Enable();
+        MoveAction.Enable();
     }
 
     private void OnDisable()
@@ -59,14 +79,19 @@ public class PlayerController : MonoBehaviour
         RightClickAction.Disable();
         MouseMoveAction.Disable();
         ZoomAction.Disable();
+        MoveAction.Disable();
     }
 
     private void Update()
     {
-        if (targetObject == null) return;
-        
         // Execute the current state's logic
         _currentState?.Update();
+    }
+    
+    private void FixedUpdate()
+    {
+        // Execute physics logic
+        _currentState?.FixedUpdate();
     }
 
     public void ChangeState(PlayerState newState)
@@ -74,5 +99,13 @@ public class PlayerController : MonoBehaviour
         _currentState?.Exit();
         _currentState = newState;
         _currentState?.Enter();
+    }
+
+    // -------------------------------------------------------------------------
+    // EXPOSED METHOD: Switches to First Person Walking Mode
+    // -------------------------------------------------------------------------
+    public void ExitMaskMaker()
+    {
+        ChangeState(new WalkingState(this));
     }
 }

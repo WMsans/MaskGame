@@ -53,7 +53,7 @@ public class RotatorState : PlayerState
             float moveAmount = scrollDelta.y * Controller.zoomSpeed * 0.01f;
             
             // Calculate current distance
-            float currentDistance = Vector3.Distance(Controller.transform.position, Controller.targetObject.position);
+            float currentDistance = Vector3.Distance(Controller.mainCamera.transform.position, Controller.targetObject.position);
 
             // Predict new distance (Positive moveAmount = Zoom In = Decrease distance)
             float projectedDistance = currentDistance - moveAmount;
