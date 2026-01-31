@@ -9,13 +9,24 @@ public class WalkingState : PlayerState
 
     public override void Enter()
     {
-        Controller.mainCamera.transform.SetParent(Controller.transform);
-        Controller.mainCamera.transform.localPosition = new Vector3(0, 1.6f, 0); 
-        Controller.mainCamera.transform.localRotation = Quaternion.identity;
+        // 1. Sync Camera Rotation
+        // Capture current rotation so the view doesn't snap to forward
+        Vector3 currentEuler = Controller.mainCamera.transform.eulerAngles;
 
+        _cameraPitch = currentEuler.x;
+        // Normalize pitch to -180 to 180 range
+        if (_cameraPitch > 180f) _cameraPitch -= 360f;
+        _cameraPitch = Mathf.Clamp(_cameraPitch, -85f, 85f);
+
+        // Apply Yaw to Body, Pitch to Camera
+        Controller.transform.rotation = Quaternion.Euler(0, currentEuler.y, 0);
+        Controller.mainCamera.transform.localRotation = Quaternion.Euler(_cameraPitch, 0, 0);
+
+        // 3. Lock Cursor
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
+        // 4. Physics Setup
         if (Controller.Rb != null)
         {
             Controller.Rb.isKinematic = false;
@@ -46,6 +57,7 @@ public class WalkingState : PlayerState
     private void HandleLook()
     {
         Vector2 mouseDelta = Controller.MouseMoveAction.ReadValue<Vector2>();
+        if(mouseDelta.sqrMagnitude >= 20000) return;
 
         float yaw = mouseDelta.x * Controller.lookSensitivity;
         Controller.transform.Rotate(Vector3.up, yaw);
@@ -75,7 +87,6 @@ public class WalkingState : PlayerState
                 if (_currentInteractable != interactable)
                 {
                     _currentInteractable = interactable;
-                    // UPDATED: Pass hit.transform to the Controller
                     Controller.SetInteractionHint(true, interactable.GetInteractionPrompt(), hit.transform);
                 }
                 return; 

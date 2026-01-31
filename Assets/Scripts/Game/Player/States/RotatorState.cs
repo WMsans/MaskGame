@@ -4,12 +4,6 @@ public class RotatorState : PlayerState
 {
     public RotatorState(PlayerController controller) : base(controller) { }
 
-    public override void Enter()
-    {
-        // Ensure camera looks at the object initially
-        Controller.transform.LookAt(Controller.targetObject);
-    }
-
     public override void Update()
     {
         HandleRotation();
