@@ -20,7 +20,7 @@ MonoBehaviour:
     fxaaShader: {fileID: 4800000, guid: 33335dbe0b055a94ea1232a1aed98205, type: 3}
     injectionPoint: 400
     qualityLevel: 2
-    renderScale: 0.175
+    renderScale: 0.2
     iterations: 64
     marchSteps: 32
     upscalingMode: 0
@@ -31,7 +31,7 @@ MonoBehaviour:
     outlineThickness: 0.53
     outlineThreshold: 0.032
     outlineColor: {r: 0, g: 0, b: 0, a: 1}
-    indexedColor: 1
+    indexedColor: 0
     colorSteps: 8
     lodBias: 1
     useCameraFarPlane: 0
@@ -53,10 +53,10 @@ MonoBehaviour:
     compositeShader: {fileID: 4800000, guid: 2991eb697ecd14c98a06d3f35413a176, type: 3}
     injectionPoint: 400
     qualityLevel: 2
-    renderScale: 0.175
+    renderScale: 0.2
     upscalingMode: 0
     sharpness: 0.5
-    outlineThickness: 0.5
+    outlineThickness: 0
     outlineThreshold: 0.032
     outlineColor: {r: 0, g: 0, b: 0, a: 1}
     indexedColor: 0
@@ -87,9 +87,9 @@ MonoBehaviour:
     probeVolumeBlendStatesCS: {fileID: 7200000, guid: b9a23f869c4fd45f19c5ada54dd82176, type: 3}
   m_RendererFeatures:
   - {fileID: 7833122117494664109}
-  - {fileID: -6071868550760088726}
   - {fileID: -499579098393715635}
-  m_RendererFeatureMap: ad6b866f10d7b46c6a3b1425b963bcab4d5c08f7742311f9
+  - {fileID: -6071868550760088726}
+  m_RendererFeatureMap: ad6b866f10d7b46c4d5c08f7742311f96a3b1425b963bcab
   m_UseNativeRenderPass: 1
   xrSystemData: {fileID: 0}
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}

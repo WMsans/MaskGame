@@ -152,6 +152,10 @@ Shader "Hidden/VoxelComposite"
                 }
 
                 #if defined(_INDEXED_COLOR)
+                    // [FIX] FSR RCAS can produce negative values (ringing), which causes LinearToSRGB to output NaN (Purple/Green artifacts).
+                    // We must saturate the color to ensure it is valid [0,1] before conversion.
+                    col = saturate(col);
+
                     // Quantize colors for retro feel (applied after outline)
                     float3 srgb = LinearToSRGB(col);
                     srgb = floor(srgb * _ColorSteps) / _ColorSteps;
