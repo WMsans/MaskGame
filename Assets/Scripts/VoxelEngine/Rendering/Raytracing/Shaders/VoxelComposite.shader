@@ -45,6 +45,7 @@ Shader "Hidden/VoxelComposite"
             float _OutlineThickness;
             float _OutlineThreshold;
             float4 _OutlineColor;
+            float4 _Jitter;
 
             struct Varyings
             {
@@ -109,11 +110,13 @@ Shader "Hidden/VoxelComposite"
                 float3 col;
                 float alpha;
                 float2 uv = input.uv;
+                float2 uvDepth;
 
                 #if defined(_UPSCALING_FSR)
                     col = FsrEasu(uv);
                     col = FsrRcas(col, uv);
                     alpha = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_BlitTexture, uv, 0).a;
+                    uvDepth = input.uv - _Jitter.xy * _BlitTexture_TexelSize.xy;
                 #else
                     float2 snappedUV = SnapUV(uv);
                     float4 rawCol = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, snappedUV);
@@ -121,13 +124,14 @@ Shader "Hidden/VoxelComposite"
                     alpha = rawCol.a;
                     uv = snappedUV;
                     // Use snapped UV for depth consistency
+                    uvDepth = SnapUV(input.uv - _Jitter.xy * _BlitTexture_TexelSize.xy);
                 #endif
 
-                float depthC = SAMPLE_TEXTURE2D(_VoxelDepthTexture, sampler_BlitTexture, uv).r;
+                float depthC = SAMPLE_TEXTURE2D(_VoxelDepthTexture, sampler_BlitTexture, uvDepth).r;
                 
                 float2 texel = _BlitTexture_TexelSize.xy * _OutlineThickness;
-                float depthN = SAMPLE_TEXTURE2D(_VoxelDepthTexture, sampler_BlitTexture, uv + float2(0, texel.y)).r;
-                float depthE = SAMPLE_TEXTURE2D(_VoxelDepthTexture, sampler_BlitTexture, uv + float2(texel.x, 0)).r;
+                float depthN = SAMPLE_TEXTURE2D(_VoxelDepthTexture, sampler_BlitTexture, uvDepth + float2(0, texel.y)).r;
+                float depthE = SAMPLE_TEXTURE2D(_VoxelDepthTexture, sampler_BlitTexture, uvDepth + float2(texel.x, 0)).r;
                 
                 // This prevents the gradient from exploding when the camera is close to a surface.
                 float zC = LinearEyeDepth(depthC, _ZBufferParams);
@@ -156,11 +160,7 @@ Shader "Hidden/VoxelComposite"
                 output.color = float4(saturate(col), alpha);
                 if (output.color.a <= 0.0) discard;
 
-                #if defined(_UPSCALING_FSR)
-                    output.depth = SAMPLE_TEXTURE2D(_VoxelDepthTexture, sampler_BlitTexture, input.uv).r;
-                #else
-                    output.depth = SAMPLE_TEXTURE2D(_VoxelDepthTexture, sampler_BlitTexture, SnapUV(input.uv)).r;
-                #endif
+                output.depth = SAMPLE_TEXTURE2D(_VoxelDepthTexture, sampler_BlitTexture, uvDepth).r;
 
                 return output;
             }
