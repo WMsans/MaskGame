@@ -1,62 +1,98 @@
 using UnityEngine;
-using UnityEngine.InputSystem; // Required for the New Input System
+using UnityEngine.InputSystem;
 
 public class MouseRotator : MonoBehaviour
 {
     [Header("Settings")]
-    public float rotationSpeed = 0.5f; // Default is lower; New Input delta is often in raw pixels
+    public float rotationSpeed = 0.5f;
     public bool invertX = false;
     public bool invertY = false;
 
-    // We define InputActions to handle the binding logic
+    [Header("Zoom Settings")]
+    public float zoomSpeed = 0.5f; // Increased slightly for world-space movement
+    public Camera targetCamera;    // Reference to the camera we are zooming towards
+
+    // Input Actions
     private InputAction rightClickAction;
     private InputAction mouseMoveAction;
+    private InputAction zoomAction;
 
     private void Awake()
     {
-        // Setup the actions programmatically
-        // 1. Define the "Enable Rotation" button (Right Mouse Button)
         rightClickAction = new InputAction(type: InputActionType.Button, binding: "<Mouse>/rightButton");
-
-        // 2. Define the "Look" input (Mouse Delta)
         mouseMoveAction = new InputAction(type: InputActionType.Value, binding: "<Mouse>/delta");
+        zoomAction = new InputAction(type: InputActionType.PassThrough, binding: "<Mouse>/scroll");
     }
 
     private void OnEnable()
     {
-        // The New Input System requires you to explicitly enable actions
         rightClickAction.Enable();
         mouseMoveAction.Enable();
+        zoomAction.Enable();
     }
 
     private void OnDisable()
     {
         rightClickAction.Disable();
         mouseMoveAction.Disable();
+        zoomAction.Disable();
+    }
+
+    private void Start()
+    {
+        // If no camera is assigned in the Inspector, try to find the Main Camera
+        if (targetCamera == null)
+        {
+            targetCamera = Camera.main;
+            if (targetCamera == null) 
+            {
+                Debug.LogWarning("No Main Camera found! Zoom may not work.");
+            }
+        }
     }
 
     private void Update()
     {
-        // Check if the Right Mouse Button is currently held down
+        HandleRotation();
+        HandleZoom();
+    }
+
+    private void HandleRotation()
+    {
         if (rightClickAction.IsPressed())
         {
-            // Read the delta (movement) value directly from the action
             Vector2 delta = mouseMoveAction.ReadValue<Vector2>();
 
-            // Apply rotation speed
             float xVal = delta.x * rotationSpeed;
             float yVal = delta.y * rotationSpeed;
 
-            // Handle Inversion
             if (invertX) xVal = -xVal;
             if (invertY) yVal = -yVal;
 
-            // Apply Rotation
-            // Horizontal mouse movement rotates around World Y (Up)
+            // Standard object rotation (Turntable style)
             transform.Rotate(Vector3.up, -xVal, Space.World);
-
-            // Vertical mouse movement rotates around Local X (Right)
             transform.Rotate(Vector3.right, yVal, Space.Self);
+        }
+    }
+
+    private void HandleZoom()
+    {
+        if (targetCamera == null) return;
+
+        Vector2 scrollDelta = zoomAction.ReadValue<Vector2>();
+
+        if (scrollDelta.y != 0)
+        {
+            // Calculate how much to move
+            float moveAmount = scrollDelta.y * zoomSpeed * 0.01f;
+
+            // FIX: Instead of moving along 'transform.forward' (Local),
+            // we move along 'targetCamera.transform.forward' (World direction of camera).
+            
+            Vector3 zoomDirection = targetCamera.transform.forward;
+            
+            // Move the object physically in World Space along that direction
+            transform.position += zoomDirection * moveAmount;
         }
     }
 }
