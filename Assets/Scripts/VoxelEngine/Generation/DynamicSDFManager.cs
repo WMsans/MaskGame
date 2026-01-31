@@ -20,6 +20,8 @@ namespace VoxelEngine.Core.Generators
         private List<Bounds> _debugDirtyRegions = new List<Bounds>();
         private bool _isDirty = false;
 
+        public bool IsDirty => _isDirty; // Exposed for checks if needed
+
         // BVH Data
         private struct MortonEntry : IComparable<MortonEntry>
         {
@@ -72,14 +74,11 @@ namespace VoxelEngine.Core.Generators
             }
         }
 
-        /// <summary>
-        /// Removes the object at the specified index.
-        /// </summary>
         public void RemoveObjectAt(int index)
         {
             if (index >= 0 && index < _objects.Count)
             {
-                // Mark the region occupied by the object as dirty so chunks can regenerate (and disappear the object)
+                // Mark the region occupied by the object as dirty so chunks can regenerate
                 AddDirtyRegion(_objects[index]);
                 
                 _objects.RemoveAt(index);
@@ -90,9 +89,6 @@ namespace VoxelEngine.Core.Generators
             }
         }
 
-        /// <summary>
-        /// Finds the index of the closest SDF object to the given point within a radius.
-        /// </summary>
         public int FindClosestObject(Vector3 position, float radius)
         {
             int bestIndex = -1;
@@ -100,7 +96,6 @@ namespace VoxelEngine.Core.Generators
 
             for (int i = 0; i < _objects.Count; i++)
             {
-                // Simple distance check to object center
                 float sqrDst = Vector3.SqrMagnitude(_objects[i].position - position);
                 if (sqrDst < minSqrDst)
                 {
@@ -156,7 +151,6 @@ namespace VoxelEngine.Core.Generators
             if (rebuildEveryFrame && _isDirty)
             {
                 RebuildBVH();
-                _isDirty = false;
             }
         }
 
@@ -211,6 +205,8 @@ namespace VoxelEngine.Core.Generators
 
             // 5. Upload
             UpdateBuffers(numObjects);
+            
+            _isDirty = false;
         }
 
         private uint ExpandBits(uint v)

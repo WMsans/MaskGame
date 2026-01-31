@@ -34,12 +34,6 @@ namespace VoxelEngine.Core.Streaming
 
             // [FIX] Auto-configure MaxDepth to match Global Voxel Size
             // We need the Leaf Node Voxel Size to equal VoxelEditManager.voxelSize (1.0)
-            // Leaf Node Size = Resolution * GlobalVoxelSize
-            // Octree Depth N Size = InitialWorldSize / 2^N
-            // EQUATION: InitialWorldSize / 2^N = Resolution * GlobalVoxelSize
-            // 2^N = InitialWorldSize / (Resolution * GlobalVoxelSize)
-            // N = Log2(InitialWorldSize / (Resolution * GlobalVoxelSize))
-            
             if (VoxelEditManager.Instance != null && _pool != null && _pool.prefab != null)
             {
                 float globalVoxelSize = VoxelEditManager.Instance.voxelSize;
@@ -99,6 +93,8 @@ namespace VoxelEngine.Core.Streaming
             
             if (dirtyRegions == null || dirtyRegions.Count == 0) return;
 
+            DynamicSDFManager.Instance.RebuildBVH();
+
             // 2. Get all currently active volumes
             var activeVolumes = VoxelVolumeRegistry.Volumes;
             
@@ -141,9 +137,6 @@ namespace VoxelEngine.Core.Streaming
 
             if (node.IsLeaf)
             {
-                // --- SPLIT CHECK ---
-                // 1. Can we go deeper? (Depth < maxDepth)
-                // 2. Are we close enough? (Distance < Size * Factor)
                 if (node.Depth < maxDepth && distance < (node.Size * splitFactor))
                 {
                     SplitNode(node);
@@ -151,15 +144,12 @@ namespace VoxelEngine.Core.Streaming
             }
             else // Node is a Branch (has children)
             {
-                // --- MERGE CHECK ---
-                // 1. Are we far enough? (Distance > Size * Factor)
                 if (distance > (node.Size * mergeFactor))
                 {
                     MergeNode(node);
                 }
                 else
                 {
-                    // If we don't merge, we must check the children
                     foreach (var child in node.Children)
                     {
                         UpdateNodeLOD(child, viewerPosition);
@@ -170,29 +160,17 @@ namespace VoxelEngine.Core.Streaming
 
         private void SplitNode(WorldOctreeNode node)
         {
-            // 1. Create child nodes (CPU logic)
             node.Subdivide();
-
-            // 2. Acquire 8 VoxelVolumes from the pool for the new children
             foreach (var child in node.Children)
             {
-                // This triggers GetVolume -> OnPullFromPool -> Generate(SDF)
                 child.EnableVolume(this.transform);
             }
-
-            // 3. Hide/Return the parent VoxelVolume
-            // We no longer need the low-res parent since high-res children are now active
             node.DisableVolume();
         }
 
         private void MergeNode(WorldOctreeNode node)
         {
-            // 1. Acquire 1 VoxelVolume for the parent (Low LOD)
-            // This generates the low-resolution representation of the large area
             node.EnableVolume(this.transform);
-
-            // 2. Hide/Return the 8 child VoxelVolumes and destroy child nodes
-            // WorldOctreeNode.Merge() recursively calls DisableVolume() on children
             node.Merge();
         }
 
@@ -205,7 +183,6 @@ namespace VoxelEngine.Core.Streaming
             }
         }
         
-        // Debug Gizmos to visualize the octree
         private void OnDrawGizmos()
         {
             if (drawDebugGizmos)
