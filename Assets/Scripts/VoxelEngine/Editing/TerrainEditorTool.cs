@@ -16,7 +16,7 @@ namespace VoxelEngine.Core.Editing
         public float editRate = 0.1f; 
         public BrushOp editMode = BrushOp.Add;
         
-        public StructuralIntegrityAnalyzer structuralAnalyzer;
+        // Removed StructuralIntegrityAnalyzer dependency
 
         private InputSystem_Actions _input;
         private Vector3 _currentHitPoint;
@@ -110,14 +110,10 @@ namespace VoxelEngine.Core.Editing
                 if (volume.WorldBounds.Intersects(brushBounds))
                 {
                     VoxelModifier modifier = new VoxelModifier(voxelModifierShader, volume);
-                    // This call now triggers the GPU edit AND the async readback
+                    // This call triggers the GPU edit AND the async readback
                     modifier.Apply(brush, volume.Resolution);
 
-                    // Phase 1: Structural Integrity Analysis
-                    if (op == BrushOp.Subtract && structuralAnalyzer != null)
-                    {
-                        structuralAnalyzer.AnalyzeWorld(brushBounds);
-                    }
+                    // Removed Structural Integrity Analysis logic here
                 }
             }
         }

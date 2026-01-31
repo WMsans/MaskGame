@@ -9,6 +9,7 @@ float sdBox(float3 p, float3 b)
     float3 q = abs(p) - b;
     return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0);
 }   
+
 // Signed Distance to an Ellipsoid
 float sdEllipsoid(float3 p, float3 r) {
     float k0 = length(p/r);
@@ -21,35 +22,34 @@ float sdEllipsoid(float3 p, float3 r) {
 float GetMaskSDF(float3 pos) {
     float3 p = pos;
 
-    // --- SHAPE COMPOSITION (Scaled x5 for "Huge" Size) ---
+    // --- SHAPE COMPOSITION (Standard Scale) ---
 
     // A. The Cranium (Forehead/Top of head)
-    // Original: Offset(0, 6, 0), Radius(22, 22, 20)
-    float3 headCenter = p - float3(0.0, 30.0, 0.0); 
-    float dCranium = sdEllipsoid(headCenter, float3(110.0, 110.0, 100.0));
+    // Scaled down: Offset(0, 6, 0), Radius(22, 22, 20)
+    float3 headCenter = p - float3(0.0, 6.0, 0.0); 
+    float dCranium = sdEllipsoid(headCenter, float3(22.0, 22.0, 20.0));
 
     // B. The Jaw (Chin/Bottom of face)
-    // Original: Offset(0, -12, -2), Radius(16, 20, 18)
-    float3 jawCenter = p - float3(0.0, -60.0, -10.0);
-    float dJaw = sdEllipsoid(jawCenter, float3(80.0, 100.0, 90.0));
+    // Scaled down: Offset(0, -12, -2), Radius(16, 20, 18)
+    float3 jawCenter = p - float3(0.0, -12.0, -2.0);
+    float dJaw = sdEllipsoid(jawCenter, float3(16.0, 20.0, 18.0));
 
     // Blend Cranium and Jaw
     float hFace;
-    // Increased blend factor for larger scale smoothness
-    float dFace = smin(dCranium, dJaw, 60.0, hFace);
+    // Reduced blend factor for standard scale (60 / 5 = 12)
+    float dFace = smin(dCranium, dJaw, 12.0, hFace);
 
     // C. The Nose Bridge
-    // Original: Offset(0, -2, 18), Radius(5, 10, 6)
-    // Note: Z offset adjusted to protrude from the new, larger face
-    float3 nosePos = p - float3(0.0, -10.0, 90.0);
-    float dNose = sdEllipsoid(nosePos, float3(25.0, 50.0, 30.0));
+    // Scaled down: Offset(0, -2, 18), Radius(5, 10, 6)
+    float3 nosePos = p - float3(0.0, -2.0, 18.0);
+    float dNose = sdEllipsoid(nosePos, float3(5.0, 10.0, 6.0));
 
     // Blend Nose into Face
     float hNose;
-    float dBaseShape = smin(dFace, dNose, 30.0, hNose);
+    // Reduced blend factor (30 / 5 = 6)
+    float dBaseShape = smin(dFace, dNose, 6.0, hNose);
 
     // --- UN-CARVED MODIFICATION ---
-    // Removed shelling (abs(d) - thickness) and back cut plane.
     // Returning the solid volume directly.
     return dBaseShape;
 }
@@ -61,11 +61,11 @@ void Stage_Mask(inout GenerationContext ctx) {
 
     if (d < ctx.sdf) {
         ctx.sdf = d;
-        ctx.material = 3; // Mask Material
+        ctx.material = 1; // Mask Material
         
         // Gradient calculation
-        // Increased epsilon for cleaner normals on large objects
-        float e = 0.5;
+        // Reduced epsilon to 0.1 to match the smaller object scale
+        float e = 0.1;
         float v1 = GetMaskSDF(p + float3(e, 0, 0));
         float v2 = GetMaskSDF(p - float3(e, 0, 0));
         float v3 = GetMaskSDF(p + float3(0, e, 0));
@@ -76,4 +76,4 @@ void Stage_Mask(inout GenerationContext ctx) {
     }
 }
 
-#endif  
+#endif
