@@ -21,36 +21,32 @@ float sdEllipsoid(float3 p, float3 r) {
 
 float GetMaskSDF(float3 pos) {
     float3 p = pos;
-
-    // --- SHAPE COMPOSITION (Standard Scale) ---
+    // --- SHAPE COMPOSITION (FLAT MASK) ---
 
     // A. The Cranium (Forehead/Top of head)
-    // Scaled down: Offset(0, 6, 0), Radius(22, 22, 20)
-    float3 headCenter = p - float3(0.0, 6.0, 0.0); 
-    float dCranium = sdEllipsoid(headCenter, float3(22.0, 22.0, 20.0));
+    // Flattened: Z Radius reduced from 20.0 to 4.0
+    float3 headCenter = p - float3(0.0, 6.0, 0.0);
+    float dCranium = sdEllipsoid(headCenter, float3(22.0, 22.0, 4.0));
 
     // B. The Jaw (Chin/Bottom of face)
-    // Scaled down: Offset(0, -12, -2), Radius(16, 20, 18)
-    float3 jawCenter = p - float3(0.0, -12.0, -2.0);
-    float dJaw = sdEllipsoid(jawCenter, float3(16.0, 20.0, 18.0));
+    // Flattened: Z Radius reduced from 18.0 to 4.0, Z Offset centered at 0
+    float3 jawCenter = p - float3(0.0, -12.0, 0.0);
+    float dJaw = sdEllipsoid(jawCenter, float3(16.0, 20.0, 4.0));
 
     // Blend Cranium and Jaw
     float hFace;
-    // Reduced blend factor for standard scale (60 / 5 = 12)
     float dFace = smin(dCranium, dJaw, 12.0, hFace);
 
     // C. The Nose Bridge
-    // Scaled down: Offset(0, -2, 18), Radius(5, 10, 6)
-    float3 nosePos = p - float3(0.0, -2.0, 18.0);
-    float dNose = sdEllipsoid(nosePos, float3(5.0, 10.0, 6.0));
+    // Flattened: Z Radius reduced from 6.0 to 4.0, Z Offset centered at 0
+    // (Note: This blends the nose flat into the face. To make it protrude slightly, increase Z radius to ~5.0 or 6.0)
+    float3 nosePos = p - float3(0.0, -2.0, 0.0);
+    float dNose = sdEllipsoid(nosePos, float3(5.0, 10.0, 4.0));
 
     // Blend Nose into Face
     float hNose;
-    // Reduced blend factor (30 / 5 = 6)
     float dBaseShape = smin(dFace, dNose, 6.0, hNose);
 
-    // --- UN-CARVED MODIFICATION ---
-    // Returning the solid volume directly.
     return dBaseShape;
 }
 
@@ -64,7 +60,6 @@ void Stage_Mask(inout GenerationContext ctx) {
         ctx.material = 1; // Mask Material
         
         // Gradient calculation
-        // Reduced epsilon to 0.1 to match the smaller object scale
         float e = 0.1;
         float v1 = GetMaskSDF(p + float3(e, 0, 0));
         float v2 = GetMaskSDF(p - float3(e, 0, 0));
