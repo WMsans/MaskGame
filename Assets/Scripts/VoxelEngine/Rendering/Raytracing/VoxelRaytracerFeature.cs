@@ -39,7 +39,7 @@ namespace VoxelEngine.Core.Rendering
             
             [Header("Celluloid Outline")]
             [Range(0.0f, 4.0f)] public float outlineThickness = 1.5f; // [CHANGE] Default thicker
-            [Range(0.0001f, 0.05f)] public float outlineThreshold = 0.001f; // [CHANGE] Default sensitive
+            [Range(0.0001f, 0.1f)] public float outlineThreshold = 0.001f; // [CHANGE] Default sensitive
             public Color outlineColor = Color.black;
 
             [Header("Retro Look")]

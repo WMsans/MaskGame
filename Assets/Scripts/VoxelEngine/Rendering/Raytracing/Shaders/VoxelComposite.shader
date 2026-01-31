@@ -119,26 +119,31 @@ Shader "Hidden/VoxelComposite"
                     float4 rawCol = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, snappedUV);
                     col = rawCol.rgb;
                     alpha = rawCol.a;
-                    uv = snappedUV; // Use snapped UV for depth consistency
+                    uv = snappedUV;
+                    // Use snapped UV for depth consistency
                 #endif
 
-                // --- [NEW: OUTLINE DETECTION] ---
                 float depthC = SAMPLE_TEXTURE2D(_VoxelDepthTexture, sampler_BlitTexture, uv).r;
-                // [CHANGE] Use uniform _OutlineThickness
+                
                 float2 texel = _BlitTexture_TexelSize.xy * _OutlineThickness;
-
                 float depthN = SAMPLE_TEXTURE2D(_VoxelDepthTexture, sampler_BlitTexture, uv + float2(0, texel.y)).r;
                 float depthE = SAMPLE_TEXTURE2D(_VoxelDepthTexture, sampler_BlitTexture, uv + float2(texel.x, 0)).r;
-
-                // Simple gradient check
-                float dDiff = length(float2(depthC - depthN, depthC - depthE));
                 
-                // [CHANGE] Use uniform _OutlineThreshold
-                float isEdge = step(_OutlineThreshold, dDiff);
+                // This prevents the gradient from exploding when the camera is close to a surface.
+                float zC = LinearEyeDepth(depthC, _ZBufferParams);
+                float zN = LinearEyeDepth(depthN, _ZBufferParams);
+                float zE = LinearEyeDepth(depthE, _ZBufferParams);
 
+                // Simple gradient check in World Space
+                float dDiff = length(float2(zC - zN, zC - zE));
+                
+                // We compare the difference against a percentage of the depth (e.g., 0.5% of distance)
+                // This keeps edge detection consistent for both near and far objects.
+                float isEdge = step(_OutlineThreshold * zC, dDiff);
+                
                 if (isEdge > 0.5)
                 {
-                    col = _OutlineColor.rgb; 
+                    col = _OutlineColor.rgb;
                 }
 
                 #if defined(_INDEXED_COLOR)
