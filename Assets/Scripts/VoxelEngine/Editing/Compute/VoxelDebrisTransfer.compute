@@ -1,0 +1,217 @@
+#pragma kernel AllocateDebrisBricks
+#pragma kernel TransferVoxels
+
+#include "../../Shared/Shaders/Includes/VoxelStructures.hlsl"
+
+// --- Source Buffers ---
+StructuredBuffer<SVONode> _SrcNodeBuffer;
+StructuredBuffer<VoxelPayload> _SrcPayloadBuffer;
+RWStructuredBuffer<uint> _SrcBrickDataBuffer; 
+StructuredBuffer<uint> _SrcPageTableBuffer;
+
+int _SrcResolution;
+int _SrcNodeOffset;
+int _SrcPayloadOffset;
+int _SrcBrickOffset;
+
+// --- Destination Buffers ---
+RWStructuredBuffer<SVONode> _DstNodeBuffer;
+RWStructuredBuffer<VoxelPayload> _DstPayloadBuffer;
+RWStructuredBuffer<uint> _DstBrickDataBuffer;
+RWStructuredBuffer<uint> _DstCounterBuffer; // [1]=PayloadCount, [2]=BrickVoxelPtr
+StructuredBuffer<uint> _DstPageTableBuffer;
+
+int _DstResolution;
+int _DstNodeOffset;
+int _DstPayloadOffset;
+int _DstBrickOffset;
+int _DstMaxBricks;
+
+// --- Operation Data ---
+StructuredBuffer<int3> _TargetVoxelList; // Source Voxel Indices (Integer)
+int _TargetVoxelCount;
+
+StructuredBuffer<int3> _TargetBrickList; // Destination Brick Coordinates
+int _TargetBrickCount;
+
+int3 _Translation; // Integer Offset from Src to Dst (Dst = Src - Trans)
+
+// --- Helpers ---
+
+uint GetLevel(int resolution)
+{
+    uint bricks = (uint)resolution / 4;
+    return firstbithigh(bricks);
+}
+
+// Get Leaf Node Index for Source (Read-Only Node Buffer)
+int GetSrcLeafNodeIndex(int3 gridPos) {
+    uint level = GetLevel(_SrcResolution);
+    return GetNodeIndex(level, (uint3)gridPos);
+}
+
+// Get Leaf Node Index for Destination (RW Node Buffer)
+int GetDstLeafNodeIndex(int3 gridPos) {
+    uint level = GetLevel(_DstResolution);
+    return GetNodeIndex(level, (uint3)gridPos);
+}
+
+// --- Kernels ---
+
+[numthreads(64, 1, 1)]
+void AllocateDebrisBricks(uint3 id : SV_DispatchThreadID)
+{
+    if ((int)id.x >= _TargetBrickCount) return;
+
+    int3 brickIdx = _TargetBrickList[id.x];
+    // Bounds check
+    int bricksPerDim = (int)((uint)_DstResolution / 4);
+    if (any(brickIdx < 0) || any(brickIdx >= bricksPerDim)) return;
+
+    int nodeIndex = GetDstLeafNodeIndex(brickIdx);
+    
+    // Read Node from Dst
+    SVONode node = _DstNodeBuffer[GetPhysicalIndex(nodeIndex, _DstNodeOffset, _DstPageTableBuffer)];
+    uint existingPayload = node.packedInfo & 0xFFFF;
+    bool isOptimizedSolid = (node.packedInfo & NODE_FLAG_SOLID) != 0;
+
+    // Allocate if Empty
+    if (existingPayload == 0)
+    {
+        uint newPayloadIdx;
+        InterlockedAdd(_DstCounterBuffer[1], 1, newPayloadIdx);
+        newPayloadIdx += 1; 
+
+        uint newBrickVoxelPtr;
+        InterlockedAdd(_DstCounterBuffer[2], 216, newBrickVoxelPtr);
+        
+        if ((newBrickVoxelPtr + 216) > ((uint)_DstMaxBricks * 216)) return;
+        
+        VoxelPayload pl;
+        pl.brickDataIndex = newBrickVoxelPtr;
+        _DstPayloadBuffer[GetPhysicalIndex(newPayloadIdx, _DstPayloadOffset, _DstPageTableBuffer)] = pl;
+        
+        // Fill logic (Default to Air)
+        uint packedFill = PackVoxelData(MAX_SDF_RANGE, float3(0,1,0), 0);
+        
+        for (uint i = 0; i < 216; i++) {
+            _DstBrickDataBuffer[_DstBrickOffset + newBrickVoxelPtr + i] = packedFill;
+        }
+        
+        uint currentInfo = node.packedInfo & 0xFFFF0000;
+        currentInfo &= ~NODE_FLAG_SOLID;
+        
+        uint newPackedInfo = (newPayloadIdx & 0xFFFF) | currentInfo;
+        
+        _DstNodeBuffer[GetPhysicalIndex(nodeIndex, _DstNodeOffset, _DstPageTableBuffer)].packedInfo = newPackedInfo;
+    }
+}
+
+[numthreads(64, 1, 1)]
+void TransferVoxels(uint3 id : SV_DispatchThreadID)
+{
+    if ((int)id.x >= _TargetVoxelCount) return;
+
+    int3 srcVoxelPos = _TargetVoxelList[id.x];
+    
+    // Calculate Dest Pos
+    // Dst = Src - Trans
+    int3 dstVoxelPos = srcVoxelPos - _Translation;
+
+    // 1. Read Source
+    int3 srcBrickIdx = (int3)((uint3)srcVoxelPos / 4);
+    int nodeIndex = GetSrcLeafNodeIndex(srcBrickIdx);
+    SVONode node = _SrcNodeBuffer[GetPhysicalIndex(nodeIndex, _SrcNodeOffset, _SrcPageTableBuffer)];
+    
+    uint payloadIdx, matID;
+    UnpackNode(node, payloadIdx, matID);
+    
+    float sdf = MAX_SDF_RANGE;
+    float3 norm = float3(0,1,0);
+    uint mat = 0;
+
+    if (payloadIdx != 0)
+    {
+        VoxelPayload payload = _SrcPayloadBuffer[GetPhysicalIndex(payloadIdx, _SrcPayloadOffset, _SrcPageTableBuffer)];
+        uint brickPtr = payload.brickDataIndex;
+        int3 localPos = srcVoxelPos - (srcBrickIdx * 4);
+        int3 storagePos = localPos + int3(1, 1, 1);
+        uint voxelIdx = _SrcBrickOffset + brickPtr + (storagePos.z * 36) + (storagePos.y * 6) + storagePos.x;
+        
+        UnpackVoxelData(_SrcBrickDataBuffer[voxelIdx], sdf, norm, mat);
+    }
+    else
+    {
+        // Optimized solid or empty?
+        if ((node.packedInfo & NODE_FLAG_SOLID) != 0)
+        {
+            sdf = -MAX_SDF_RANGE;
+            mat = matID;
+        }
+    }
+
+    // 2. Write Destination (Home + Neighbors for Ghost Voxels)
+    int3 homeBrick = (int3)((uint3)dstVoxelPos / 4);
+    int3 lp = dstVoxelPos - (homeBrick * 4);
+    
+    int3 minOff = int3(lp.x == 0 ? -1 : 0, lp.y == 0 ? -1 : 0, lp.z == 0 ? -1 : 0);
+    int3 maxOff = int3(lp.x == 3 ? 1 : 0, lp.y == 3 ? 1 : 0, lp.z == 3 ? 1 : 0);
+
+    for (int bz = minOff.z; bz <= maxOff.z; bz++)
+    for (int by = minOff.y; by <= maxOff.y; by++)
+    for (int bx = minOff.x; bx <= maxOff.x; bx++)
+    {
+        int3 targetBrick = homeBrick + int3(bx, by, bz);
+        int bricksPerDim = (int)((uint)_DstResolution / 4);
+        if (any(targetBrick < 0) || any(targetBrick >= bricksPerDim)) continue;
+
+        int nIdx = GetDstLeafNodeIndex(targetBrick);
+        SVONode n = _DstNodeBuffer[GetPhysicalIndex(nIdx, _DstNodeOffset, _DstPageTableBuffer)];
+        uint pIdx, mID;
+        UnpackNode(n, pIdx, mID);
+        
+        if (pIdx != 0)
+        {
+            VoxelPayload pl = _DstPayloadBuffer[GetPhysicalIndex(pIdx, _DstPayloadOffset, _DstPageTableBuffer)];
+            uint bPtr = pl.brickDataIndex;
+            
+            // Local pos relative to this brick
+            int3 l = dstVoxelPos - (targetBrick * 4);
+            int3 s = l + int3(1, 1, 1); // +Padding
+            
+            uint vIdx = _DstBrickOffset + bPtr + (s.z * 36) + (s.y * 6) + s.x;
+            _DstBrickDataBuffer[vIdx] = PackVoxelData(sdf, norm, mat);
+        }
+    }
+
+    // 3. Clear Source (Home + Neighbors)
+    int3 srcHomeBrick = (int3)((uint3)srcVoxelPos / 4);
+    int3 slp = srcVoxelPos - (srcHomeBrick * 4);
+    int3 sMinOff = int3(slp.x == 0 ? -1 : 0, slp.y == 0 ? -1 : 0, slp.z == 0 ? -1 : 0);
+    int3 sMaxOff = int3(slp.x == 3 ? 1 : 0, slp.y == 3 ? 1 : 0, slp.z == 3 ? 1 : 0);
+    
+    for (int sz = sMinOff.z; sz <= sMaxOff.z; sz++)
+    for (int sy = sMinOff.y; sy <= sMaxOff.y; sy++)
+    for (int sx = sMinOff.x; sx <= sMaxOff.x; sx++)
+    {
+         int3 targetBrick = srcHomeBrick + int3(sx, sy, sz);
+         int bricksPerDim = (int)((uint)_SrcResolution / 4);
+         if (any(targetBrick < 0) || any(targetBrick >= bricksPerDim)) continue;
+         
+         int nIdx = GetSrcLeafNodeIndex(targetBrick);
+         SVONode n = _SrcNodeBuffer[GetPhysicalIndex(nIdx, _SrcNodeOffset, _SrcPageTableBuffer)];
+         uint pIdx, mID;
+         UnpackNode(n, pIdx, mID);
+         
+         if (pIdx != 0)
+         {
+             VoxelPayload pl = _SrcPayloadBuffer[GetPhysicalIndex(pIdx, _SrcPayloadOffset, _SrcPageTableBuffer)];
+             uint bPtr = pl.brickDataIndex;
+             int3 l = srcVoxelPos - (targetBrick * 4);
+             int3 s = l + int3(1, 1, 1);
+             uint vIdx = _SrcBrickOffset + bPtr + (s.z * 36) + (s.y * 6) + s.x;
+             
+             _SrcBrickDataBuffer[vIdx] = PackVoxelData(MAX_SDF_RANGE, float3(0,1,0), 0);
+         }
+    }
+}

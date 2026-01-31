@@ -1,0 +1,90 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0844d8b61462dcf499859cd9c3c344ba, type: 3}
+  m_Name: VoxelDefinitionManager
+  m_EditorClassIdentifier: Assembly-CSharp::VoxelEngine.Core.Data.VoxelDefinitionManager
+  textureResolution: 256
+  definitions:
+  - {fileID: 11400000, guid: eec6781f6e255654c90f5e77b4456778, type: 2}
+  - {fileID: 11400000, guid: ab60271fb1dc3a1849be4b281b72bdd5, type: 2}
+  - {fileID: 11400000, guid: 9185654d5aef4404b8094515210d0ab0, type: 2}
+  - {fileID: 11400000, guid: 2ff0dc5154c29314f8590386f17dab45, type: 2}
+  - {fileID: 11400000, guid: eec6781f6e255654c90f5e77b4456778, type: 2}
+  - {fileID: 11400000, guid: 50b063e6b6c420946847b3c2dab99e7a, type: 2}
+  - {fileID: 11400000, guid: d1645c153243eef41b6f635a62d9c0df, type: 2}
+  albedoTextureArray: {fileID: 18700000, guid: b8c1c6235aa8b3c4c8a18b045807f83e, type: 2}
+  normalTextureArray: {fileID: 18700000, guid: 0a820d3360a94f348acb72b8aa29c776, type: 2}
+  maskTextureArray: {fileID: 18700000, guid: b8451571327a8f2429c9e704c251a05c, type: 2}
+  _packedGpuData:
+  - sideAlbedoIndex: 1
+    sideNormalIndex: 1
+    sideMaskIndex: 1
+    topAlbedoIndex: 2
+    topNormalIndex: 2
+    topMaskIndex: 2
+    sideMetallic: 0
+    topMetallic: 0
+    renderType: 1
+  - sideAlbedoIndex: 3
+    sideNormalIndex: 3
+    sideMaskIndex: 3
+    topAlbedoIndex: 3
+    topNormalIndex: 3
+    topMaskIndex: 3
+    sideMetallic: 0
+    topMetallic: 0
+    renderType: 1
+  - sideAlbedoIndex: 4
+    sideNormalIndex: 4
+    sideMaskIndex: 4
+    topAlbedoIndex: 5
+    topNormalIndex: 5
+    topMaskIndex: 5
+    sideMetallic: 0
+    topMetallic: 0
+    renderType: 1
+  - sideAlbedoIndex: 0
+    sideNormalIndex: 0
+    sideMaskIndex: 0
+    topAlbedoIndex: 0
+    topNormalIndex: 0
+    topMaskIndex: 0
+    sideMetallic: 0
+    topMetallic: 0
+    renderType: 1
+  - sideAlbedoIndex: 1
+    sideNormalIndex: 1
+    sideMaskIndex: 1
+    topAlbedoIndex: 2
+    topNormalIndex: 2
+    topMaskIndex: 2
+    sideMetallic: 0
+    topMetallic: 0
+    renderType: 1
+  - sideAlbedoIndex: 6
+    sideNormalIndex: 6
+    sideMaskIndex: 6
+    topAlbedoIndex: 6
+    topNormalIndex: 6
+    topMaskIndex: 6
+    sideMetallic: 0
+    topMetallic: 0
+    renderType: 1
+  - sideAlbedoIndex: 0
+    sideNormalIndex: 0
+    sideMaskIndex: 0
+    topAlbedoIndex: 0
+    topNormalIndex: 0
+    topMaskIndex: 0
+    sideMetallic: 0
+    topMetallic: 0
+    renderType: 1
