@@ -140,7 +140,7 @@ namespace VoxelEngine.Core.Editing
         /// </summary>
         public void SetBrushMaterial(int materialIndex)
         {
-            brushMaterial = Mathf.Max(0, materialIndex);
+            brushMaterial = Mathf.Max(0, materialIndex + 1);
         }
 
         /// <summary>

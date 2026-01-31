@@ -1,16 +1,21 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class MouseRotator : MonoBehaviour
+public class CameraOrbit : MonoBehaviour
 {
-    [Header("Settings")]
+    [Header("References")]
+    [Tooltip("The object the camera will orbit around and look at.")]
+    public Transform targetObject;
+
+    [Header("Rotation Settings")]
     public float rotationSpeed = 0.5f;
     public bool invertX = false;
     public bool invertY = false;
 
     [Header("Zoom Settings")]
-    public float zoomSpeed = 0.5f; // Increased slightly for world-space movement
-    public Camera targetCamera;    // Reference to the camera we are zooming towards
+    public float zoomSpeed = 0.5f;
+    public float minZoomDistance = 2.0f; // Prevent going inside the object
+    public float maxZoomDistance = 50.0f; // Prevent going too far away
 
     // Input Actions
     private InputAction rightClickAction;
@@ -19,6 +24,7 @@ public class MouseRotator : MonoBehaviour
 
     private void Awake()
     {
+        // Setup Input Actions
         rightClickAction = new InputAction(type: InputActionType.Button, binding: "<Mouse>/rightButton");
         mouseMoveAction = new InputAction(type: InputActionType.Value, binding: "<Mouse>/delta");
         zoomAction = new InputAction(type: InputActionType.PassThrough, binding: "<Mouse>/scroll");
@@ -40,25 +46,28 @@ public class MouseRotator : MonoBehaviour
 
     private void Start()
     {
-        // If no camera is assigned in the Inspector, try to find the Main Camera
-        if (targetCamera == null)
+        if (targetObject == null)
         {
-            targetCamera = Camera.main;
-            if (targetCamera == null) 
-            {
-                Debug.LogWarning("No Main Camera found! Zoom may not work.");
-            }
+            Debug.LogWarning("Target Object is not assigned! Please assign an object for the camera to orbit.");
+        }
+        else
+        {
+            // Optional: Immediately snap camera to look at the target on start
+            transform.LookAt(targetObject);
         }
     }
 
     private void Update()
     {
+        if (targetObject == null) return;
+
         HandleRotation();
         HandleZoom();
     }
 
     private void HandleRotation()
     {
+        // Only orbit when right mouse button is held
         if (rightClickAction.IsPressed())
         {
             Vector2 delta = mouseMoveAction.ReadValue<Vector2>();
@@ -69,30 +78,42 @@ public class MouseRotator : MonoBehaviour
             if (invertX) xVal = -xVal;
             if (invertY) yVal = -yVal;
 
-            // Standard object rotation (Turntable style)
-            transform.Rotate(Vector3.up, -xVal, Space.World);
-            transform.Rotate(Vector3.right, yVal, Space.Self);
+            // ORBIT LOGIC:
+            // 1. Rotate around the target's Y axis (Horizontal movement)
+            // Note: We use positive xVal here so dragging mouse left moves camera left (orbiting right)
+            transform.RotateAround(targetObject.position, Vector3.up, xVal);
+
+            // 2. Rotate around the Camera's Right axis (Vertical movement)
+            // Note: We use -yVal because dragging up usually means we want to orbit "up" (camera moves down)
+            transform.RotateAround(targetObject.position, transform.right, -yVal);
+
+            // 3. Fix any rotation drift to keep the target dead center
+            transform.LookAt(targetObject);
         }
     }
 
     private void HandleZoom()
     {
-        if (targetCamera == null) return;
-
         Vector2 scrollDelta = zoomAction.ReadValue<Vector2>();
 
         if (scrollDelta.y != 0)
         {
-            // Calculate how much to move
+            // Calculate direction from camera to target
             float moveAmount = scrollDelta.y * zoomSpeed * 0.01f;
+            
+            // Calculate current distance
+            float currentDistance = Vector3.Distance(transform.position, targetObject.position);
 
-            // FIX: Instead of moving along 'transform.forward' (Local),
-            // we move along 'targetCamera.transform.forward' (World direction of camera).
-            
-            Vector3 zoomDirection = targetCamera.transform.forward;
-            
-            // Move the object physically in World Space along that direction
-            transform.position += zoomDirection * moveAmount;
+            // Predict new distance
+            // If moveAmount is positive (scrolling up), we move forward (distance decreases)
+            float projectedDistance = currentDistance - moveAmount;
+
+            // Apply movement only if within min/max bounds
+            if (projectedDistance > minZoomDistance && projectedDistance < maxZoomDistance)
+            {
+                // Move the camera forward/backward along its own forward vector
+                transform.position += transform.forward * moveAmount;
+            }
         }
     }
 }
