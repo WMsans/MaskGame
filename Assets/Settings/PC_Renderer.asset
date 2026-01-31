@@ -28,8 +28,8 @@ MonoBehaviour:
     enableFXAA: 0
     enableTAA: 0
     taaBlend: 0.93
-    outlineThickness: 1
-    outlineThreshold: 0.001
+    outlineThickness: 0.6
+    outlineThreshold: 0.0005
     outlineColor: {r: 0, g: 0, b: 0, a: 1}
     indexedColor: 1
     colorSteps: 8
