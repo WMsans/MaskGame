@@ -36,6 +36,31 @@ MonoBehaviour:
     lodBias: 1
     useCameraFarPlane: 0
     blueNoiseTexture: {fileID: 2800000, guid: 8ed71a09edae5cd40be07beb8c8571a4, type: 3}
+--- !u!114 &-499579098393715635
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f139da3d3ca9f79608229eb5d60a7030, type: 3}
+  m_Name: UnityStylizationFeature
+  m_EditorClassIdentifier: 
+  m_Active: 1
+  settings:
+    compositeShader: {fileID: 4800000, guid: 2991eb697ecd14c98a06d3f35413a176, type: 3}
+    injectionPoint: 400
+    qualityLevel: 2
+    renderScale: 0.175
+    upscalingMode: 0
+    sharpness: 0.5
+    outlineThickness: 0.5
+    outlineThreshold: 0.032
+    outlineColor: {r: 0, g: 0, b: 0, a: 1}
+    indexedColor: 0
+    colorSteps: 8
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -63,7 +88,8 @@ MonoBehaviour:
   m_RendererFeatures:
   - {fileID: 7833122117494664109}
   - {fileID: -6071868550760088726}
-  m_RendererFeatureMap: ad6b866f10d7b46c6a3b1425b963bcab
+  - {fileID: -499579098393715635}
+  m_RendererFeatureMap: ad6b866f10d7b46c6a3b1425b963bcab4d5c08f7742311f9
   m_UseNativeRenderPass: 1
   xrSystemData: {fileID: 0}
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
