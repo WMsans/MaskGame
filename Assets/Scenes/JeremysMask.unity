@@ -301,6 +301,7 @@ GameObject:
   - component: {fileID: 1223313212}
   - component: {fileID: 1223313213}
   - component: {fileID: 1223313214}
+  - component: {fileID: 1223313215}
   m_Layer: 0
   m_Name: MaskMaker
   m_TagString: Untagged
@@ -387,6 +388,21 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   voxelSize: 1
+--- !u!114 &1223313215
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1223313209}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 767be13b21dd0178485efcc55f39f82b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  rotationSpeed: 0.5
+  invertX: 0
+  invertY: 0
 --- !u!1 &1578056978
 GameObject:
   m_ObjectHideFlags: 0
