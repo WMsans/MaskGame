@@ -64,11 +64,15 @@ namespace VoxelEngine.Core.Editing
             // Handle Input
             if (_input.Player.Attack.IsPressed())
             {
+                SoundManager.Instance.StartSculptSound();
                 if (Time.time - _lastEditTime > editRate && _hasHit)
                 {
                     ApplyBrush(editMode);
                     _lastEditTime = Time.time;
                 }
+            } else
+            {
+                SoundManager.Instance.StopSculptSound();
             }
         }
 
