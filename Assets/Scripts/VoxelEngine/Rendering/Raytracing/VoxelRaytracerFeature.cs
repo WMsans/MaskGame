@@ -149,6 +149,7 @@ namespace VoxelEngine.Core.Rendering
             private static readonly int _HistoryTexParams = Shader.PropertyToID("_HistoryTex");
             private static readonly int _BlendParams = Shader.PropertyToID("_Blend");
             private static readonly int _ColorStepsParams = Shader.PropertyToID("_ColorSteps");
+            private static readonly int _JitterParams = Shader.PropertyToID("_Jitter");
             
             // [CHANGE] New Outline IDs
             private static readonly int _OutlineThicknessID = Shader.PropertyToID("_OutlineThickness");
@@ -237,6 +238,7 @@ namespace VoxelEngine.Core.Rendering
                 public float outlineThickness;
                 public float outlineThreshold;
                 public Color outlineColor;
+                public Vector2 jitter;
             }
             
             private class FXAAPassData { public TextureHandle source; public Material material; }
@@ -402,6 +404,7 @@ namespace VoxelEngine.Core.Rendering
                     compData.outlineThickness = _settings.outlineThickness;
                     compData.outlineThreshold = _settings.outlineThreshold;
                     compData.outlineColor = _settings.outlineColor;
+                    compData.jitter = new Vector2(jitterX, jitterY);
 
                     builder.UseTexture(compData.source, AccessFlags.Read);
                     builder.UseTexture(compData.depthSource, AccessFlags.Read);
@@ -420,6 +423,7 @@ namespace VoxelEngine.Core.Rendering
                         cData.material.SetFloat(_OutlineThicknessID, cData.outlineThickness);
                         cData.material.SetFloat(_OutlineThresholdID, cData.outlineThreshold);
                         cData.material.SetColor(_OutlineColorID, cData.outlineColor);
+                        cData.material.SetVector(_JitterParams, cData.jitter);
                         
                         if (cData.useFSR) cData.material.EnableKeyword("_UPSCALING_FSR"); else cData.material.DisableKeyword("_UPSCALING_FSR");
                         

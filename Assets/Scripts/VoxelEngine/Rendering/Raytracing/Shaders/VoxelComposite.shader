@@ -45,6 +45,7 @@ Shader "Hidden/VoxelComposite"
             float _OutlineThickness;
             float _OutlineThreshold;
             float4 _OutlineColor;
+            float4 _Jitter;
 
             struct Varyings
             {
@@ -123,11 +124,15 @@ Shader "Hidden/VoxelComposite"
                     // Use snapped UV for depth consistency
                 #endif
 
-                float depthC = SAMPLE_TEXTURE2D(_VoxelDepthTexture, sampler_BlitTexture, uv).r;
+                // [CHANGE] Un-Jitter Depth Sampling
+                float2 jitterOffset = _Jitter.xy * _BlitTexture_TexelSize.xy;
+                float2 depthUV = uv - jitterOffset;
+
+                float depthC = SAMPLE_TEXTURE2D(_VoxelDepthTexture, sampler_BlitTexture, depthUV).r;
                 
                 float2 texel = _BlitTexture_TexelSize.xy * _OutlineThickness;
-                float depthN = SAMPLE_TEXTURE2D(_VoxelDepthTexture, sampler_BlitTexture, uv + float2(0, texel.y)).r;
-                float depthE = SAMPLE_TEXTURE2D(_VoxelDepthTexture, sampler_BlitTexture, uv + float2(texel.x, 0)).r;
+                float depthN = SAMPLE_TEXTURE2D(_VoxelDepthTexture, sampler_BlitTexture, depthUV + float2(0, texel.y)).r;
+                float depthE = SAMPLE_TEXTURE2D(_VoxelDepthTexture, sampler_BlitTexture, depthUV + float2(texel.x, 0)).r;
                 
                 // This prevents the gradient from exploding when the camera is close to a surface.
                 float zC = LinearEyeDepth(depthC, _ZBufferParams);
@@ -156,11 +161,7 @@ Shader "Hidden/VoxelComposite"
                 output.color = float4(saturate(col), alpha);
                 if (output.color.a <= 0.0) discard;
 
-                #if defined(_UPSCALING_FSR)
-                    output.depth = SAMPLE_TEXTURE2D(_VoxelDepthTexture, sampler_BlitTexture, input.uv).r;
-                #else
-                    output.depth = SAMPLE_TEXTURE2D(_VoxelDepthTexture, sampler_BlitTexture, SnapUV(input.uv)).r;
-                #endif
+                output.depth = SAMPLE_TEXTURE2D(_VoxelDepthTexture, sampler_BlitTexture, depthUV).r;
 
                 return output;
             }
