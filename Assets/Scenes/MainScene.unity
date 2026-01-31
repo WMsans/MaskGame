@@ -394,7 +394,6 @@ GameObject:
   - component: {fileID: 217833895}
   - component: {fileID: 217833894}
   - component: {fileID: 217833893}
-  - component: {fileID: 217833896}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -520,25 +519,6 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
---- !u!114 &217833896
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 217833891}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 767be13b21dd0178485efcc55f39f82b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  targetObject: {fileID: 1525353136}
-  rotationSpeed: 0.5
-  invertX: 0
-  invertY: 0
-  zoomSpeed: 400
-  minZoomDistance: 2
-  maxZoomDistance: 50
 --- !u!1 &233264874
 GameObject:
   m_ObjectHideFlags: 0
@@ -1037,7 +1017,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 0.392}
+  m_Color: {r: 0.11764706, g: 0.11764706, b: 0.18039216, a: 0.392}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -1625,6 +1605,7 @@ GameObject:
   - component: {fileID: 610991760}
   - component: {fileID: 610991759}
   - component: {fileID: 610991758}
+  - component: {fileID: 610991761}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -1683,6 +1664,25 @@ Transform:
   - {fileID: 1406050802}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &610991761
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 610991757}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 767be13b21dd0178485efcc55f39f82b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetObject: {fileID: 1525353136}
+  rotationSpeed: 0.5
+  invertX: 0
+  invertY: 0
+  zoomSpeed: 400
+  minZoomDistance: 2
+  maxZoomDistance: 50
 --- !u!1 &688261612
 GameObject:
   m_ObjectHideFlags: 0

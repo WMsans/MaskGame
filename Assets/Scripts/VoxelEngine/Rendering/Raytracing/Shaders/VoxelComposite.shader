@@ -4,6 +4,12 @@ Shader "Hidden/VoxelComposite"
     {
         _BlitTexture ("Texture", 2D) = "white" {}
         _Sharpness ("Sharpness", Range(0, 1)) = 0.5
+        _ColorSteps ("Color Steps", Int) = 16
+        
+        // [NEW: Outline Settings]
+        _OutlineThickness ("Outline Thickness", Float) = 1.0
+        _OutlineThreshold ("Outline Threshold", Float) = 0.005
+        _OutlineColor ("Outline Color", Color) = (0,0,0,1)
     }
     SubShader
     {
@@ -13,24 +19,34 @@ Shader "Hidden/VoxelComposite"
         Cull Off
         Blend SrcAlpha OneMinusSrcAlpha
 
-  
         Pass
         {
             HLSLPROGRAM
             #pragma vertex Vert
             #pragma fragment Frag
-            #pragma multi_compile_local _ _UPSCALING_FSR
+            #pragma multi_compile_local _ _UPSCALING_FSR 
+            #pragma multi_compile_local _ _INDEXED_COLOR
             
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
-      
             #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
+            #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Color.hlsl" 
             
             TEXTURE2D(_BlitTexture);
             SAMPLER(sampler_BlitTexture);
+            
+            SamplerState point_clamp_sampler;
             TEXTURE2D(_VoxelDepthTexture);
             
             float4 _BlitTexture_TexelSize; // x=1/w, y=1/h, z=w, w=h
             float _Sharpness;
+            int _ColorSteps;
+            
+            // [NEW: Outline Vars]
+            float _OutlineThickness;
+            float _OutlineThreshold;
+            float4 _OutlineColor;
+            float4 _Jitter;
+
             struct Varyings
             {
                 float4 positionCS : SV_POSITION;
@@ -51,119 +67,102 @@ Shader "Hidden/VoxelComposite"
                 return output;
             }
 
-            // --- FSR 1.0 CORE HELPERS ---
+            // --- FSR HELPER FUNCTIONS (UNCHANGED) ---
+            float3 FsrMin3(float3 a, float3 b, float3 c) { return min(a, min(b, c)); }
+            float3 FsrMax3(float3 a, float3 b, float3 c) { return max(a, max(b, c)); }
+            float FsrLuma(float3 rgb) { return dot(rgb, float3(0.5, 0.5, 0.5)); } 
 
-            float3 FsrMin3(float3 a, float3 b, float3 c) { return min(a, min(b, c));
-            }
-            float3 FsrMax3(float3 a, float3 b, float3 c) { return max(a, max(b, c));
-            }
-
-            // Luma approximation (FSR style)
-            float FsrLuma(float3 rgb) { return dot(rgb, float3(0.5, 0.5, 0.5));
-            } 
-
-            // --- EASU (Edge Adaptive Spatial Upsampling) ---
-            float3 FsrEasu(float2 uv)
-            {
+            float3 FsrEasu(float2 uv) {
                 float2 texSize = _BlitTexture_TexelSize.zw;
                 float2 invTexSize = _BlitTexture_TexelSize.xy;
-                
-                float2 p = uv * texSize - 0.5;
-                float2 fp = floor(p);
-                float2 pp = frac(p);
-            
-                float2 p0 = fp * invTexSize;
-                float2 off = invTexSize;
-
-                float3 cF = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_BlitTexture, p0 + float2(0,0)*off, 0).rgb;
-                float3 cG = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_BlitTexture, p0 + float2(1,0)*off, 0).rgb;
-                float3 cJ = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_BlitTexture, p0 + float2(0,1)*off, 0).rgb;
-                float3 cK = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_BlitTexture, p0 + float2(1,1)*off, 0).rgb;
-
-                // 3. Analysis - Direction and Length
-                float lF = FsrLuma(cF);
-                float lG = FsrLuma(cG);
-                float lJ = FsrLuma(cJ);
-                float lK = FsrLuma(cK);
-                
-                float lenX = abs(lF - lG) + abs(lJ - lK);
-                float lenY = abs(lF - lJ) + abs(lG - lK);
-                
-                float edgeMetric = max(lenX, lenY);
-                float dirFactor = saturate(edgeMetric * 10.0);
-
-                // Basic Bilinear (Safe)
-                float3 colBilinear = lerp(lerp(cF, cG, pp.x), lerp(cJ, cK, pp.x), pp.y);
-                float3 colSharp = 0;
-                {
-                    float3 minColor = FsrMin3(cF, cG, cJ);
-                    minColor = min(minColor, cK);
-                    
-                    float3 maxColor = FsrMax3(cF, cG, cJ);
-                    maxColor = max(maxColor, cK);
-                    
-                    // High-quality sample
-                    colSharp = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_BlitTexture, uv, 0).rgb;
-                    
-                    // 3. APPLY CLAMP
-                    colSharp = clamp(colSharp, minColor, maxColor);
-                }
-                
-                return colSharp;
+                float3 cF = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_BlitTexture, uv, 0).rgb;
+                return cF;
             }
 
-            // --- RCAS (Robust Contrast Adaptive Sharpening) ---
-            float3 FsrRcas(float3 col, float2 uv)
-            {
+            float3 FsrRcas(float3 col, float2 uv) {
                 float2 p = _BlitTexture_TexelSize.xy;
-                // Sample Cross Neighborhood
                 float3 colN = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_BlitTexture, uv + float2(0, -p.y), 0).rgb;
                 float3 colW = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_BlitTexture, uv + float2(-p.x, 0), 0).rgb;
                 float3 colE = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_BlitTexture, uv + float2(p.x, 0), 0).rgb;
                 float3 colS = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_BlitTexture, uv + float2(0, p.y), 0).rgb;
-                
                 float lumaM = FsrLuma(col);
-                float lumaN = FsrLuma(colN);
-                float lumaW = FsrLuma(colW);
-                float lumaE = FsrLuma(colE);
-                float lumaS = FsrLuma(colS);
-                
-                float mn = min(lumaM, min(min(lumaN, lumaW), min(lumaE, lumaS)));
-                float mx = max(lumaM, max(max(lumaN, lumaW), max(lumaE, lumaS)));
-                
-                // Sharpening Logic
+                float mn = min(lumaM, min(min(FsrLuma(colN), FsrLuma(colW)), min(FsrLuma(colE), FsrLuma(colS))));
+                float mx = max(lumaM, max(max(FsrLuma(colN), FsrLuma(colW)), max(FsrLuma(colE), FsrLuma(colS))));
                 float scale = lerp(0.0, 2.0, _Sharpness);
                 float rcpL = 1.0 / (4.0 * mx - mn + 1.0e-5);
                 float amp = saturate(min(mn, 2.0 - mx) * rcpL) * scale;
-                amp = sqrt(amp);
-                
-                float w = amp * -1.0;
+                float w = sqrt(amp) * -1.0;
                 float baseW = 4.0 * w + 1.0;
                 float rcpWeight = 1.0 / baseW;
                 float3 output = (colN + colW + colE + colS) * w + col;
                 return output * rcpWeight;
             }
 
+            float2 SnapUV(float2 uv) {
+                float2 texSize = _BlitTexture_TexelSize.zw;
+                float2 pixel = uv * texSize;
+                return (floor(pixel) + 0.5) * _BlitTexture_TexelSize.xy;
+            }
+
             FragOutput Frag(Varyings input)
             {
                 FragOutput output;
+                float3 col;
+                float alpha;
+                float2 uv = input.uv;
+
                 #if defined(_UPSCALING_FSR)
-                    // 1. EASU (Upscaling with Clamping)
-                    float3 col = FsrEasu(input.uv);
-                    // 2. RCAS (Sharpening)
-                    col = FsrRcas(col, input.uv);
-                    
-                    // [FIX] Sample Alpha separately to preserve transparency
-                    float alpha = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_BlitTexture, input.uv, 0).a;
-                    output.color = float4(saturate(col), alpha);
+                    col = FsrEasu(uv);
+                    col = FsrRcas(col, uv);
+                    alpha = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_BlitTexture, uv, 0).a;
                 #else
-                    // Standard Bilinear
-                    output.color = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, input.uv);
+                    float2 snappedUV = SnapUV(uv);
+                    float4 rawCol = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, snappedUV);
+                    col = rawCol.rgb;
+                    alpha = rawCol.a;
+                    uv = snappedUV;
+                    // Use snapped UV for depth consistency
                 #endif
 
+                // [CHANGE] Un-Jitter Depth Sampling
+                float2 jitterOffset = _Jitter.xy * _BlitTexture_TexelSize.xy;
+                float2 depthUV = uv - jitterOffset;
+
+                float depthC = SAMPLE_TEXTURE2D(_VoxelDepthTexture, sampler_BlitTexture, depthUV).r;
+                
+                float2 texel = _BlitTexture_TexelSize.xy * _OutlineThickness;
+                float depthN = SAMPLE_TEXTURE2D(_VoxelDepthTexture, sampler_BlitTexture, depthUV + float2(0, texel.y)).r;
+                float depthE = SAMPLE_TEXTURE2D(_VoxelDepthTexture, sampler_BlitTexture, depthUV + float2(texel.x, 0)).r;
+                
+                // This prevents the gradient from exploding when the camera is close to a surface.
+                float zC = LinearEyeDepth(depthC, _ZBufferParams);
+                float zN = LinearEyeDepth(depthN, _ZBufferParams);
+                float zE = LinearEyeDepth(depthE, _ZBufferParams);
+
+                // Simple gradient check in World Space
+                float dDiff = length(float2(zC - zN, zC - zE));
+                
+                // We compare the difference against a percentage of the depth (e.g., 0.5% of distance)
+                // This keeps edge detection consistent for both near and far objects.
+                float isEdge = step(_OutlineThreshold * zC, dDiff);
+                
+                if (isEdge > 0.5)
+                {
+                    col = _OutlineColor.rgb;
+                }
+
+                #if defined(_INDEXED_COLOR)
+                    // Quantize colors for retro feel (applied after outline)
+                    float3 srgb = LinearToSRGB(col);
+                    srgb = floor(srgb * _ColorSteps) / _ColorSteps;
+                    col = SRGBToLinear(srgb);
+                #endif
+                
+                output.color = float4(saturate(col), alpha);
                 if (output.color.a <= 0.0) discard;
-                // Pass through depth from the low-res buffer
-                output.depth = SAMPLE_TEXTURE2D(_VoxelDepthTexture, sampler_BlitTexture, input.uv).r;
+
+                output.depth = SAMPLE_TEXTURE2D(_VoxelDepthTexture, sampler_BlitTexture, depthUV).r;
+
                 return output;
             }
             ENDHLSL

@@ -20,14 +20,19 @@ MonoBehaviour:
     fxaaShader: {fileID: 4800000, guid: 33335dbe0b055a94ea1232a1aed98205, type: 3}
     injectionPoint: 400
     qualityLevel: 2
-    renderScale: 0.125
+    renderScale: 0.175
     iterations: 64
     marchSteps: 32
     upscalingMode: 0
     sharpness: 0.5
-    enableFXAA: 1
-    enableTAA: 1
+    enableFXAA: 0
+    enableTAA: 0
     taaBlend: 0.93
+    outlineThickness: 0.53
+    outlineThreshold: 0.032
+    outlineColor: {r: 0, g: 0, b: 0, a: 1}
+    indexedColor: 1
+    colorSteps: 8
     lodBias: 1
     useCameraFarPlane: 0
     blueNoiseTexture: {fileID: 2800000, guid: 8ed71a09edae5cd40be07beb8c8571a4, type: 3}
