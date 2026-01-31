@@ -3112,7 +3112,7 @@ MonoBehaviour:
   saveSelected: 0
   saveKey: My Selector
   enableIndicators: 1
-  invokeAtStart: 0
+  invokeAtStart: 1
   invertAnimation: 0
   loopSelection: 1
   iconScale: 1
@@ -3918,7 +3918,7 @@ MonoBehaviour:
   saveSelected: 0
   saveKey: My Selector
   enableIndicators: 1
-  invokeAtStart: 0
+  invokeAtStart: 1
   invertAnimation: 0
   loopSelection: 1
   iconScale: 1

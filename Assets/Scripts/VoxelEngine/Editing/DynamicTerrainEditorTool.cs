@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
+using UnityEngine.EventSystems; // [Added] Required for UI detection
 using VoxelEngine.Core;
 using VoxelEngine.Core.Data;
 using VoxelEngine.Core.Generators;
@@ -69,6 +70,11 @@ namespace VoxelEngine.Core.Editing
             {
                 _readbackRequest = AsyncGPUReadback.Request(VoxelRaytracerFeature.RaycastHitBuffer, OnReadbackComplete);
                 _readbackPending = true;
+            }
+
+            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+            {
+                return;
             }
 
             // 3. Handle Input
