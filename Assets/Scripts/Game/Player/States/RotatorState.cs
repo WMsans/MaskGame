@@ -25,15 +25,12 @@ public class RotatorState : PlayerState
 
             // ROTATION LOGIC (Object-Centric):
             // 1. Rotate the OBJECT around the World's Y axis (Horizontal).
-            //    We invert xVal to maintain the feeling that dragging moves the surface naturally.
             Controller.targetObject.Rotate(Vector3.up, -xVal, Space.World);
 
             // 2. Rotate the OBJECT around the Camera's Right axis (Vertical).
-            //    This tilts the object relative to the view, preventing gimbal lock/jitter.
-            Controller.targetObject.Rotate(Controller.transform.right, yVal, Space.World);
-
-            // Note: We no longer move the Camera or use LookAt in Update, 
-            // which eliminates the jitter at the poles.
+            //    FIX: Changed Controller.transform.right to Controller.mainCamera.transform.right
+            //    This ensures the rotation axis matches the user's current view.
+            Controller.targetObject.Rotate(Controller.mainCamera.transform.right, yVal, Space.World);
         }
     }
 
@@ -56,8 +53,9 @@ public class RotatorState : PlayerState
             if (projectedDistance > Controller.minZoomDistance && projectedDistance < Controller.maxZoomDistance)
             {
                 // Move the OBJECT along the line to the camera (Camera's -Forward)
-                // This keeps the camera stationary.
-                Controller.targetObject.position += -Controller.transform.forward * moveAmount;
+                // FIX: Changed Controller.transform.forward to Controller.mainCamera.transform.forward
+                // This ensures the object moves towards/away from the camera, not the player body.
+                Controller.targetObject.position += -Controller.mainCamera.transform.forward * moveAmount;
             }
         }
     }
