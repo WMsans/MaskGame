@@ -335,6 +335,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Mask_VentFlap
       objectReference: {fileID: 0}
+    - target: {fileID: 4284837332122457813, guid: 9b135cfc2469658428066fd9abd74490, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 460941c8d503fce4ca2867a948bce6e2, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -503,6 +507,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -7511558181221131132, guid: 1090e3d43b5630b4393540d5fcdd0571, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: f0c1232619944134e8fe27dd601edef3, type: 2}
     - target: {fileID: 919132149155446097, guid: 1090e3d43b5630b4393540d5fcdd0571, type: 3}
       propertyPath: m_Name
       value: Mask_TrashCan
@@ -599,7 +607,7 @@ Transform:
   m_GameObject: {fileID: 488691756}
   serializedVersion: 2
   m_LocalRotation: {x: 0.034676194, y: -0.70746434, z: 0.034795478, w: 0.70503974}
-  m_LocalPosition: {x: -1.69, y: 4.49, z: 0.98}
+  m_LocalPosition: {x: -1.69, y: 4.51, z: 0.98}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -743,6 +751,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -7511558181221131132, guid: a61d3e98054df5e40a5c557ee43ca155, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 3b4a2de129e66dc498f3804566a27d70, type: 2}
     - target: {fileID: 919132149155446097, guid: a61d3e98054df5e40a5c557ee43ca155, type: 3}
       propertyPath: m_Name
       value: Mask_LargeShelf
@@ -815,7 +827,7 @@ PrefabInstance:
     - target: {fileID: -5169578811043067064, guid: 221916681119acd449d743f40ebca1b8, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
-      objectReference: {fileID: 2100000, guid: 6a5f16acf38d8574bb262923661bf4bd, type: 2}
+      objectReference: {fileID: 2100000, guid: eb5169a1813be6c479c0e27f4e861b73, type: 2}
     - target: {fileID: 919132149155446097, guid: 221916681119acd449d743f40ebca1b8, type: 3}
       propertyPath: m_Name
       value: Mask_Table
@@ -1114,6 +1126,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -4795165560744122111, guid: 26a559958980a3b4486471e9fdc022f8, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 5e50ea0e1a23cb94dbd099f85decf22d, type: 2}
     - target: {fileID: 919132149155446097, guid: 26a559958980a3b4486471e9fdc022f8, type: 3}
       propertyPath: m_Name
       value: Mask_ShelfTop
@@ -1526,6 +1542,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -7511558181221131132, guid: 497236cf39f04bf4caa6490367028849, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: fb1e85e4a3426084dafda5505433bf46, type: 2}
     - target: {fileID: 919132149155446097, guid: 497236cf39f04bf4caa6490367028849, type: 3}
       propertyPath: m_Name
       value: Mask_Apparatus2
@@ -1595,6 +1615,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -6822343713258076425, guid: e0e1e4e5ec185164aac878f148bc82b9, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 391353f5fa6992a49978c95816ef4eea, type: 2}
     - target: {fileID: 919132149155446097, guid: e0e1e4e5ec185164aac878f148bc82b9, type: 3}
       propertyPath: m_Name
       value: Mask_Shelf_Leg
@@ -1668,6 +1692,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Mask_Vent
       objectReference: {fileID: 0}
+    - target: {fileID: 2987511624813213884, guid: 244daa9538b36494ca4baa662757b671, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 98a1429dca1c2554d884e04d0d967313, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -1706,6 +1734,127 @@ Transform:
   - {fileID: 1796594068}
   - {fileID: 1060139974}
   - {fileID: 1454836869}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1612644603
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1612644606}
+  - component: {fileID: 1612644605}
+  - component: {fileID: 1612644604}
+  m_Layer: 0
+  m_Name: Point Light
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1612644604
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1612644603}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Version: 3
+  m_UsePipelineSettings: 1
+  m_AdditionalLightsShadowResolutionTier: 2
+  m_LightLayerMask: 1
+  m_RenderingLayers: 1
+  m_CustomShadowLayers: 0
+  m_ShadowLayerMask: 1
+  m_ShadowRenderingLayers: 1
+  m_LightCookieSize: {x: 1, y: 1}
+  m_LightCookieOffset: {x: 0, y: 0}
+  m_SoftShadowQuality: 0
+--- !u!108 &1612644605
+Light:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1612644603}
+  m_Enabled: 1
+  serializedVersion: 11
+  m_Type: 2
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Intensity: 3
+  m_Range: 10
+  m_SpotAngle: 30
+  m_InnerSpotAngle: 21.80208
+  m_CookieSize: 10
+  m_Shadows:
+    m_Type: 0
+    m_Resolution: -1
+    m_CustomResolution: -1
+    m_Strength: 1
+    m_Bias: 0.05
+    m_NormalBias: 0.4
+    m_NearPlane: 0.2
+    m_CullingMatrixOverride:
+      e00: 1
+      e01: 0
+      e02: 0
+      e03: 0
+      e10: 0
+      e11: 1
+      e12: 0
+      e13: 0
+      e20: 0
+      e21: 0
+      e22: 1
+      e23: 0
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    m_UseCullingMatrixOverride: 0
+  m_Cookie: {fileID: 0}
+  m_DrawHalo: 0
+  m_Flare: {fileID: 0}
+  m_RenderMode: 0
+  m_CullingMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_RenderingLayerMask: 1
+  m_Lightmapping: 4
+  m_LightShadowCasterMode: 0
+  m_AreaSize: {x: 1, y: 1}
+  m_BounceIntensity: 1
+  m_ColorTemperature: 6570
+  m_UseColorTemperature: 0
+  m_BoundingSphereOverride: {x: 0, y: 0, z: 0, w: 0}
+  m_UseBoundingSphereOverride: 0
+  m_UseViewFrustumForShadowCasterCull: 1
+  m_ForceVisible: 0
+  m_ShadowRadius: 0
+  m_ShadowAngle: 0
+  m_LightUnit: 1
+  m_LuxAtDistance: 1
+  m_EnableSpotReflector: 1
+--- !u!4 &1612644606
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1612644603}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.9, y: 5.16, z: 0.48}
+  m_LocalScale: {x: 1.218, y: 1.218, z: 1.218}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1687377339
@@ -1768,6 +1917,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -7511558181221131132, guid: dc2b7abd4fb9c3f4b8c7d312efacec4a, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 245ca7220e8c8a544a5669fd5535aa4b, type: 2}
     - target: {fileID: 919132149155446097, guid: dc2b7abd4fb9c3f4b8c7d312efacec4a, type: 3}
       propertyPath: m_Name
       value: Mask_Apparatus1
@@ -1837,6 +1990,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -3829954680092474846, guid: 1ba306439479c3948a2809ce585bb0d5, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 2b39e0b17cb48dc459b81ad0daabec17, type: 2}
     - target: {fileID: 919132149155446097, guid: 1ba306439479c3948a2809ce585bb0d5, type: 3}
       propertyPath: m_Name
       value: Mask_bolt (3)
@@ -1985,6 +2142,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -7511558181221131132, guid: ae8bba940dcde5d42bf235521763753f, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: bcd1883e87bcb904ea78d448091d7db8, type: 2}
     - target: {fileID: 919132149155446097, guid: ae8bba940dcde5d42bf235521763753f, type: 3}
       propertyPath: m_Name
       value: Mask_Floor
@@ -2132,6 +2293,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -7511558181221131132, guid: 942f5cafc9678d443bd7353dda368002, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 866e3a8aaa82c9041b535a47a598074b, type: 2}
     - target: {fileID: 919132149155446097, guid: 942f5cafc9678d443bd7353dda368002, type: 3}
       propertyPath: m_Name
       value: Mask_Outlet
@@ -2315,6 +2480,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -6822343713258076425, guid: e0e1e4e5ec185164aac878f148bc82b9, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 391353f5fa6992a49978c95816ef4eea, type: 2}
     - target: {fileID: 919132149155446097, guid: e0e1e4e5ec185164aac878f148bc82b9, type: 3}
       propertyPath: m_Name
       value: Mask_Shelf_Leg (1)
@@ -2384,6 +2553,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -7511558181221131132, guid: f34a758453381af43a370a6e31dd7a62, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 21eb945925a00f94fb45f2182007ea3a, type: 2}
     - target: {fileID: 919132149155446097, guid: f34a758453381af43a370a6e31dd7a62, type: 3}
       propertyPath: m_Name
       value: Mask_Chair
@@ -2472,6 +2645,7 @@ SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
   - {fileID: 488691759}
+  - {fileID: 1612644606}
   - {fileID: 632966165}
   - {fileID: 554680827}
   - {fileID: 1687377339}
