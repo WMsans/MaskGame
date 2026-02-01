@@ -5582,7 +5582,7 @@ MonoBehaviour:
   zoomSpeed: 400
   minZoomDistance: 2
   maxZoomDistance: 5000
-  walkSpeed: 50
+  walkSpeed: 0
   lookSensitivity: 0.5
 --- !u!114 &981265774
 MonoBehaviour:
