@@ -78,7 +78,7 @@ public class PlayerController : MonoBehaviour
         
         SetInteractionHint(false, "");
 
-        ChangeState(new RotatorState(this));
+        ChangeState(new WalkingState(this));
     }
 
     private void OnEnable()
