@@ -1,11 +1,16 @@
 using UnityEngine;
-using DG.Tweening; 
+using DG.Tweening;
+using Game.UI;
 
 public class MaskMakerInteractable : MonoBehaviour, IInteractable
 {
     [Header("Interaction Settings")]
     [SerializeField] private string _promptText = "[E] Make Mask";
     
+    [Header("UI Settings")]
+    [Tooltip("The UI Panel to show when interacting (e.g., EditorPanel). If null, will try to find EditorPanel in scene.")]
+    public GameObject editorPanel;
+
     [Header("Camera Settings")]
     [Tooltip("The transform representing where the camera should move to when interacting.")]
     [SerializeField] private Transform _viewPoint;
@@ -32,10 +37,20 @@ public class MaskMakerInteractable : MonoBehaviour, IInteractable
         _player = FindFirstObjectByType<PlayerController>();
         if (_player == null) return;
         
+        // Auto-find panel if not assigned
+        if (editorPanel == null)
+        {
+            EditorPanel foundPanel = FindFirstObjectByType<EditorPanel>(FindObjectsInactive.Include);
+            if (foundPanel != null) editorPanel = foundPanel.gameObject;
+        }
+
         _isInteracting = true;
         _interactionStartTime = Time.time; // FIX: Record the start time
 
-        // 1. Stop Player Physics (Prevent sliding while in menu)
+        // 1. Show UI
+        if (editorPanel != null) editorPanel.SetActive(true);
+
+        // 2. Stop Player Physics (Prevent sliding while in menu)
         if (_player.Rb != null) _player.Rb.linearVelocity = Vector3.zero;
 
         // 2. Store original camera transform (World Space) so we can return exactly
@@ -62,6 +77,9 @@ public class MaskMakerInteractable : MonoBehaviour, IInteractable
     public void ExitInteraction()
     {
         _isInteracting = false;
+
+        // Hide UI
+        if (editorPanel != null) editorPanel.SetActive(false);
 
         // Restore camera position immediately so WalkingState starts with the correct view
         if (_player != null && _player.mainCamera != null)

@@ -8,4 +8,7 @@ public interface IInteractable
     
     // Logic to execute when the player actually interacts (optional, but good to have)
     void Interact();
+
+    // Logic to execute when exiting the interaction
+    void ExitInteraction();
 }
