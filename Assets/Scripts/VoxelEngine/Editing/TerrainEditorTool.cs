@@ -62,7 +62,7 @@ namespace VoxelEngine.Core.Editing
             }
 
             // Handle Input
-            if (_input.Player.Attack.IsPressed())
+            if (_input.Player.Attack.IsPressed() && PlayerController.Instance.IsRotating)
             {
                 SoundManager.Instance.StartSculptSound();
                 if (Time.time - _lastEditTime > editRate && _hasHit)

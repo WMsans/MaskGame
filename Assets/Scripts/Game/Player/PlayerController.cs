@@ -5,7 +5,7 @@ using TMPro;
 // -------------------------------------------------------------------------
 // 1. CONTEXT: The Player Controller (State Machine Manager)
 // -------------------------------------------------------------------------
-public class PlayerController : MonoBehaviour
+public class PlayerController : MonoSingleton<PlayerController>
 {
     [Header("References")]
     [Tooltip("The object the camera will orbit around and look at.")]
@@ -53,9 +53,11 @@ public class PlayerController : MonoBehaviour
 
     // NEW: Track the current object we are hinting at
     private Transform _currentHintTarget;
+    public bool IsRotating => _currentState is RotatorState;
 
     private void Awake()
     {
+        base.Awake();
         Rb = GetComponent<Rigidbody>();
 
         RightClickAction = new InputAction(type: InputActionType.Button, binding: "<Mouse>/rightButton");
