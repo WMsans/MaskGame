@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 3326347546432740586}
   - component: {fileID: 2473577055464790466}
   m_Layer: 0
-  m_Name: Blueprint
+  m_Name: TomBlueprint
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
