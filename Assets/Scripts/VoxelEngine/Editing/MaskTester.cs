@@ -2,7 +2,7 @@ using UnityEngine;
 using VoxelEngine.Editing;
 
 [CreateAssetMenu(fileName = "MaskTester", menuName = "VoxelEngine/MaskTester")]
-public class MaskTester : ScriptableObject
+public class MaskTester : ScriptableObjectSingleton<MaskTester>
 {
     public Texture2D[] referenceImages;
 
@@ -26,7 +26,7 @@ public class MaskTester : ScriptableObject
         if (captureTool == null)
         {
             // Fallback: Try finding it
-            captureTool = FindObjectOfType<VoxelProjectionCapture>();
+            captureTool = FindAnyObjectByType<VoxelProjectionCapture>();
             if (captureTool == null)
             {
                 Debug.LogError("VoxelProjectionCapture not found in scene!");

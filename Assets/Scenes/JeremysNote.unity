@@ -5976,7 +5976,7 @@ MonoBehaviour:
   loopSelection: 1
   iconScale: 1
   contentSpacing: 15
-  defaultIndex: 0
+  defaultIndex: 1
   index: 0
   items:
   - itemTitle: Add
