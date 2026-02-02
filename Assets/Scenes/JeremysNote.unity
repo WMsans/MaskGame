@@ -3659,6 +3659,7 @@ GameObject:
   - component: {fileID: 433245475}
   - component: {fileID: 433245474}
   - component: {fileID: 433245473}
+  - component: {fileID: 433245477}
   m_Layer: 0
   m_Name: Terrain
   m_TagString: Untagged
@@ -3745,6 +3746,22 @@ MonoBehaviour:
   maxNodesPerVolume: 10000
   maxBricksPerVolume: 5000
   TLASResolution: 16
+--- !u!114 &433245477
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 433245471}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 24412e7e14a5dfe5ab1944d1c274ebf9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  projectionShader: {fileID: 7200000, guid: d9019086f80629cd6a3f265e14f48888, type: 3}
+  resolution: 512
+  captureSize: 64
+  captureCenter: {x: 0, y: 0, z: 0}
 --- !u!1 &461000263
 GameObject:
   m_ObjectHideFlags: 0
@@ -6187,7 +6204,7 @@ Camera:
   far clip plane: 1000
   field of view: 60
   orthographic: 0
-  orthographic size: 5
+  orthographic size: 50
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
