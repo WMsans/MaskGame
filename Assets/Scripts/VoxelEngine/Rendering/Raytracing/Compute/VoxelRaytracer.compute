@@ -57,6 +57,7 @@ float4 _ZBufferParams;
 // Lighting & Ray Settings
 float4 _MainLightPosition;
 float4 _MainLightColor;
+float _LightIntensityMultiplier; // New parameter
 float4 _RaytraceParams; // x: LOD scale, yz: jitter
 float _DebugNormalDelta;
 float _DebugViewNormals;
@@ -704,14 +705,32 @@ float maxDist = linearDepth / max(dot(rayDir, forward), 0.0001);
             
             // Lighting
             float3 V = -currentRayDir;
-            float3 L = normalize(_MainLightPosition.xyz);
+            float3 L;
+            float lightDist;
+            float attenuation = 1.0;
+
+            if (_MainLightPosition.w > 0.5) // Point Light
+            {
+                float3 lightVec = _MainLightPosition.xyz - hit.pos;
+                lightDist = length(lightVec);
+                L = normalize(lightVec);
+                // Basic attenuation: 1 / (1 + distance^2 * 0.05) to prevent blowout nearby but fade distant
+                attenuation = 1.0 / (1.0 + lightDist * lightDist * 0.05);
+            }
+            else // Directional Light
+            {
+                L = normalize(_MainLightPosition.xyz);
+                lightDist = 10000.0;
+                attenuation = 1.0;
+            }
             
             // Shadow Ray
             // Offset slightly along normal to prevent self-shadowing
-            bool inShadow = TraceShadow(hit.pos + normal * 0.05, L, 1000.0);
-            float shadowAtten = inShadow ? 0.0 : 1.0;
+            bool inShadow = TraceShadow(hit.pos + normal * 0.05, L, lightDist);
+            float shadowAtten = (inShadow ? 0.0 : 1.0) * attenuation;
 
             float3 directLight = LightingWhitted(albedo, normal, V, L, _MainLightColor.rgb, roughness, metallic, ao, shadowAtten);
+            directLight *= _LightIntensityMultiplier; // Apply multiplier
             
             accumColor += directLight * throughput;
 

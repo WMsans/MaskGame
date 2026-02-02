@@ -54,6 +54,9 @@ namespace VoxelEngine.Core.Rendering
             [Header("Culling")]
             public bool useCameraFarPlane = false; 
 
+            [Header("Lighting")]
+            public float lightIntensityMultiplier = 1.0f;
+
             [Header("Dithering")]
             public Texture2D blueNoiseTexture;
         }
@@ -135,6 +138,7 @@ namespace VoxelEngine.Core.Rendering
             private static readonly int _MaskTextureArrayParams = Shader.PropertyToID("_MaskTextureArray");
             private static readonly int _MainLightPositionParams = Shader.PropertyToID("_MainLightPosition");
             private static readonly int _MainLightColorParams = Shader.PropertyToID("_MainLightColor");
+            private static readonly int _LightIntensityMultiplierParams = Shader.PropertyToID("_LightIntensityMultiplier");
             private static readonly int _RaycastBufferParams = Shader.PropertyToID("_RaycastBuffer");
             private static readonly int _FrameCountParams = Shader.PropertyToID("_FrameCount");
             private static readonly int _BlueNoiseTextureParams = Shader.PropertyToID("_BlueNoiseTexture");
@@ -223,7 +227,7 @@ namespace VoxelEngine.Core.Rendering
             }
 
             private class PassData {
-                public ComputeShader computeShader; public int kernel; public TextureHandle targetColor; public TextureHandle targetDepth; public TextureHandle targetMotionVector; public TextureHandle sourceDepth; public TextureHandle sourceColor; public Matrix4x4 cameraToWorld; public Matrix4x4 cameraInverseProjection; public Matrix4x4 viewProj; public Matrix4x4 prevViewProj; public Vector4 zBufferParams; public int width; public int height; public Vector4 mainLightPosition; public Vector4 mainLightColor; public Vector4 raytraceParams; public GraphicsBuffer nodeBuffer; public GraphicsBuffer payloadBuffer; public GraphicsBuffer brickDataBuffer; public GraphicsBuffer pageTableBuffer; public GraphicsBuffer tlasGridBuffer; public GraphicsBuffer tlasChunkIndexBuffer; public Vector3 tlasBoundsMin; public Vector3 tlasBoundsMax; public int tlasResolution; public GraphicsBuffer chunkBuffer; public int chunkCount; public GraphicsBuffer materialBuffer; public GraphicsBuffer raycastBuffer; public TextureHandle albedoArray; public TextureHandle normalArray; public TextureHandle maskArray; public int frameCount; public TextureHandle blueNoise; public Vector2 mousePosition; public int maxIterations; public int maxMarchSteps;
+                public ComputeShader computeShader; public int kernel; public TextureHandle targetColor; public TextureHandle targetDepth; public TextureHandle targetMotionVector; public TextureHandle sourceDepth; public TextureHandle sourceColor; public Matrix4x4 cameraToWorld; public Matrix4x4 cameraInverseProjection; public Matrix4x4 viewProj; public Matrix4x4 prevViewProj; public Vector4 zBufferParams; public int width; public int height; public Vector4 mainLightPosition; public Vector4 mainLightColor; public float lightIntensityMultiplier; public Vector4 raytraceParams; public GraphicsBuffer nodeBuffer; public GraphicsBuffer payloadBuffer; public GraphicsBuffer brickDataBuffer; public GraphicsBuffer pageTableBuffer; public GraphicsBuffer tlasGridBuffer; public GraphicsBuffer tlasChunkIndexBuffer; public Vector3 tlasBoundsMin; public Vector3 tlasBoundsMax; public int tlasResolution; public GraphicsBuffer chunkBuffer; public int chunkCount; public GraphicsBuffer materialBuffer; public GraphicsBuffer raycastBuffer; public TextureHandle albedoArray; public TextureHandle normalArray; public TextureHandle maskArray; public int frameCount; public TextureHandle blueNoise; public Vector2 mousePosition; public int maxIterations; public int maxMarchSteps;
             }
             
             private class CompositePassData { 
@@ -339,7 +343,7 @@ namespace VoxelEngine.Core.Rendering
                     if (_normalHandle != null) data.normalArray = renderGraph.ImportTexture(_normalHandle);
                     if (_maskHandle != null) data.maskArray = renderGraph.ImportTexture(_maskHandle);
                     if (_blueNoiseHandle != null) data.blueNoise = renderGraph.ImportTexture(_blueNoiseHandle);
-                    data.width = scaledWidth; data.height = scaledHeight; data.cameraToWorld = cameraData.camera.cameraToWorldMatrix; data.cameraInverseProjection = cameraData.camera.projectionMatrix.inverse; data.viewProj = viewProj; data.prevViewProj = prevViewProj; data.zBufferParams = Shader.GetGlobalVector(_ZBufferParamsID); data.sourceDepth = resourceData.cameraDepthTexture; data.sourceColor = resourceData.activeColorTexture; data.targetColor = lowResResult; data.targetDepth = lowResDepth; data.targetMotionVector = motionVectorTex; data.mainLightPosition = mainPos; data.mainLightColor = mainCol; data.raytraceParams = new Vector4(finalSpread, jitterX, jitterY, 0); data.mousePosition = VoxelRaytracerFeature.MousePosition * currentScale; data.maxIterations = iterations; data.maxMarchSteps = marchSteps;
+                    data.width = scaledWidth; data.height = scaledHeight; data.cameraToWorld = cameraData.camera.cameraToWorldMatrix; data.cameraInverseProjection = cameraData.camera.projectionMatrix.inverse; data.viewProj = viewProj; data.prevViewProj = prevViewProj; data.zBufferParams = Shader.GetGlobalVector(_ZBufferParamsID); data.sourceDepth = resourceData.cameraDepthTexture; data.sourceColor = resourceData.activeColorTexture; data.targetColor = lowResResult; data.targetDepth = lowResDepth; data.targetMotionVector = motionVectorTex; data.mainLightPosition = mainPos; data.mainLightColor = mainCol; data.lightIntensityMultiplier = _settings.lightIntensityMultiplier; data.raytraceParams = new Vector4(finalSpread, jitterX, jitterY, 0); data.mousePosition = VoxelRaytracerFeature.MousePosition * currentScale; data.maxIterations = iterations; data.maxMarchSteps = marchSteps;
 
                     builder.UseTexture(data.targetColor, AccessFlags.Write);
                     builder.UseTexture(data.targetDepth, AccessFlags.Write);
@@ -370,7 +374,7 @@ namespace VoxelEngine.Core.Rendering
                         if (pd.maskArray.IsValid()) cmd.SetComputeTextureParam(cs, ker, _MaskTextureArrayParams, pd.maskArray);
                         cmd.SetComputeMatrixParam(cs, _CameraToWorldParams, pd.cameraToWorld); cmd.SetComputeMatrixParam(cs, _CameraInverseProjectionParams, pd.cameraInverseProjection); cmd.SetComputeMatrixParam(cs, _CameraViewProjectionParams, pd.viewProj); cmd.SetComputeMatrixParam(cs, _PrevViewProjMatrixParams, pd.prevViewProj);
                         cmd.SetComputeVectorParam(cs, _ZBufferParamsID, pd.zBufferParams); cmd.SetComputeTextureParam(cs, ker, _CameraDepthTextureParams, pd.sourceDepth); cmd.SetComputeTextureParam(cs, ker, _SourceTexParams, pd.sourceColor); cmd.SetComputeTextureParam(cs, ker, _ResultParams, pd.targetColor); cmd.SetComputeTextureParam(cs, ker, _ResultDepthParams, pd.targetDepth); cmd.SetComputeTextureParam(cs, ker, _MotionVectorTextureParams, pd.targetMotionVector);
-                        cmd.SetComputeVectorParam(cs, _MainLightPositionParams, pd.mainLightPosition); cmd.SetComputeVectorParam(cs, _MainLightColorParams, pd.mainLightColor); cmd.SetComputeVectorParam(cs, _RaytraceParams, pd.raytraceParams); cmd.SetComputeBufferParam(cs, ker, _RaycastBufferParams, pd.raycastBuffer);
+                        cmd.SetComputeVectorParam(cs, _MainLightPositionParams, pd.mainLightPosition); cmd.SetComputeVectorParam(cs, _MainLightColorParams, pd.mainLightColor); cmd.SetComputeFloatParam(cs, _LightIntensityMultiplierParams, pd.lightIntensityMultiplier); cmd.SetComputeVectorParam(cs, _RaytraceParams, pd.raytraceParams); cmd.SetComputeBufferParam(cs, ker, _RaycastBufferParams, pd.raycastBuffer);
                         int groupsX = Mathf.CeilToInt(pd.width / 8.0f); int groupsY = Mathf.CeilToInt(pd.height / 8.0f);
                         cmd.DispatchCompute(cs, ker, groupsX, groupsY, 1);
                     });
@@ -469,14 +473,49 @@ namespace VoxelEngine.Core.Rendering
 
             private void SetupLights(UniversalLightData lightData, out Vector4 mainPos, out Vector4 mainCol)
             {
+                // Default to a downward directional light if nothing is found, 
+                // but make it black so it doesn't illuminate incorrectly? 
+                // Or keep default ambient behavior. For now, defaulting to "Up" but Black if no lights.
                 mainPos = new Vector4(0, 1, 0, 0); 
-                mainCol = Color.white;
+                mainCol = Color.black; // Default to black if no lights exist
+
                 int mainLightIndex = lightData.mainLightIndex;
+                bool foundLight = false;
+
+                // 1. Try Main Directional Light
                 if (mainLightIndex != -1 && mainLightIndex < lightData.visibleLights.Length) {
                     VisibleLight mainLight = lightData.visibleLights[mainLightIndex];
                     if (mainLight.lightType == LightType.Directional) {
-                        Vector4 dir = -mainLight.localToWorldMatrix.GetColumn(2); dir.w = 0; mainPos = dir; mainCol = mainLight.finalColor;
+                        Vector4 dir = -mainLight.localToWorldMatrix.GetColumn(2); 
+                        dir.w = 0; // Directional
+                        mainPos = dir; 
+                        mainCol = mainLight.finalColor;
+                        foundLight = true;
                     }
+                }
+
+                // 2. Fallback: Find first Point Light
+                if (!foundLight)
+                {
+                    for(int i = 0; i < lightData.visibleLights.Length; i++)
+                    {
+                        VisibleLight light = lightData.visibleLights[i];
+                        if (light.lightType == LightType.Point)
+                        {
+                            Vector4 pos = light.localToWorldMatrix.GetColumn(3);
+                            pos.w = 1; // Point Light (Positional)
+                            mainPos = pos;
+                            mainCol = light.finalColor;
+                            foundLight = true;
+                            break; // Use the first one found
+                        }
+                    }
+                }
+                
+                // 3. If absolutely no lights, maybe provide a weak ambient or keep it black
+                if (!foundLight)
+                {
+                     mainCol = Color.clear;
                 }
             }
         }

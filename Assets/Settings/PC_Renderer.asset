@@ -35,6 +35,7 @@ MonoBehaviour:
     colorSteps: 8
     lodBias: 1
     useCameraFarPlane: 0
+    lightIntensityMultiplier: 0.002
     blueNoiseTexture: {fileID: 2800000, guid: 8ed71a09edae5cd40be07beb8c8571a4, type: 3}
 --- !u!114 &-499579098393715635
 MonoBehaviour:
